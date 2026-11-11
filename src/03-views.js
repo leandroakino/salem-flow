@@ -442,7 +442,7 @@ function viewTV(){
   return `<div class="tv"><div class="tvtop"><div class="brand">${LEAF}Produção</div>
     <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
     <div class="tvclock"><b id="tvclock"></b><span id="tvdate"></span></div>
-    ${ctl?`<div class="tvctl"><button class="tvbtn" id="tvsnd" data-act="tv-snd"></button><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button></div>`:''}</div>
+    ${ctl?`<div class="tvctl"><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button><button class="tvbtn tvic" id="tvsnd" data-act="tv-snd"></button></div>`:''}</div>
     <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${L.map(o=>tvCard(o,c,pi)).join('')||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
 }
 let tvCtx=null, tvSnd=(lsGet('salem.tvsound')!=='off');
@@ -455,7 +455,7 @@ let tvIdle=Date.now();
 function tvTick(){
   if(view!=='tv') return;
   const d=new Date(), c=$('#tvclock'); if(!c) return;
-  const sb=$('#tvsnd'); if(sb){ const st=!tvSnd?'off':tvAudioOn()?'on':'lock'; sb.textContent=st==='off'?'Som desligado':st==='on'?'Som ligado':'Toque para ativar o som'; sb.classList.toggle('warn',st==='lock'); }
+  const sb=$('#tvsnd'); if(sb){ const st=!tvSnd?'off':tvAudioOn()?'on':'lock', lb=st==='off'?'Som desligado':st==='on'?'Som ligado':'Toque para ativar o som'; if(sb.dataset.st!==st){ sb.dataset.st=st; sb.setAttribute('aria-label',lb); sb.title=lb; sb.classList.toggle('warn',st==='lock'); sb.innerHTML='<svg viewBox="0 0 24 24" width="1.2em" height="1.2em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/>'+(st==='off'?'<path d="M17 9l5 6M22 9l-5 6"/>':'<path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/>')+'</svg>'+(st==='lock'?'<span>Ativar som</span>':''); } }
   c.textContent=p2(d.getHours())+':'+p2(d.getMinutes());
   try{ $('#tvdate').textContent=d.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}).replace(/\./g,''); }catch(e){}
   document.querySelectorAll('.tv .tvi small[data-dl]').forEach(s=>{ const dl=s.dataset.dl; const w=tvWhen(dl===''?null:+dl); s.textContent=w.t; const card=s.closest('.tvi'); card.classList.toggle('late',w.k==='late'); card.classList.toggle('soon',w.k==='soon'); });
