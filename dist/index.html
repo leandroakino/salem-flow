@@ -1071,11 +1071,26 @@ LY('form').addEventListener('input',e=>{
   if(t.dataset.f==='name'){ const c=arr('clients').find(c=>c.name.toLowerCase()===t.value.trim().toLowerCase()); if(c&&!FM.phone){ FM.phone=c.phone; $('#fo-phone').value=c.phone; } }
   if(['type','card','noTime'].includes(t.dataset.f)) renderForm(); else liveForm();
 });
+// Reduz a foto antes de enviar: lado maior até 1600 px, JPEG com qualidade ajustada para ficar perto de 350 KB.
+// Se algo falhar (formato que o navegador não abre), envia o arquivo original.
+async function compressImage(file){
+  try{
+    if(!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)&&file.type) return file;
+    let bmp; try{ bmp=await createImageBitmap(file,{imageOrientation:'from-image'}); }catch(e){ bmp=await createImageBitmap(file); }
+    const sc=Math.min(1,1600/Math.max(bmp.width,bmp.height)), w=Math.round(bmp.width*sc), h=Math.round(bmp.height*sc);
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d');
+    cx.fillStyle='#fff'; cx.fillRect(0,0,w,h); cx.drawImage(bmp,0,0,w,h); if(bmp.close) bmp.close();
+    let blob=null;
+    for(const q of [.85,.78,.7,.6]){ blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',q)); if(!blob||blob.size<=350*1024) break; }
+    if(!blob||blob.size>=file.size) return file;
+    return new File([blob],(file.name||'foto').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
+  }catch(e){ return file; }
+}
 LY('form').addEventListener('change',async e=>{
   const t=e.target;
   if(t.id==='fo-photo'&&assets){
     for(const file of Array.from(t.files)){
-      try{ const r=await assets.upload(file); FM.photos.push({id:r.id}); }catch(err){ toast('Não consegui enviar a foto '+file.name+(err&&err.code==='unsupported_type'?' (formato não aceito)':''),true); }
+      try{ const r=await assets.upload(await compressImage(file)); FM.photos.push({id:r.id}); }catch(err){ toast('Não consegui enviar a foto '+file.name+(err&&err.code==='unsupported_type'?' (formato não aceito)':''),true); }
     }
     renderForm();
   }
