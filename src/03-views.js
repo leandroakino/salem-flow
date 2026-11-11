@@ -463,7 +463,7 @@ function tvTick(){
 }
 setInterval(tvTick,15000);
 const tvScr=new Map();
-setInterval(()=>{ if(view!=='tv'||drawerId||Date.now()-tvIdle<30000) return;
-  document.querySelectorAll('.tv .tvlist').forEach(l=>{ if(l.scrollHeight<=l.clientHeight+4) return; const s=tvScr.get(l)||{w:0}; tvScr.set(l,s); const t=Date.now(); if(t<s.w) return;
-    if(l.scrollTop+l.clientHeight>=l.scrollHeight-2){ s.w=t+4000; if(!s.back){ s.back=true; return; } s.back=false; l.scrollTop=0; s.w=t+4000; return; } s.back=false; l.scrollTop+=1; });
-  tvTick(); },40);
+setInterval(()=>{ if(view!=='tv'||drawerId||document.hidden||Date.now()-tvIdle<30000) return;
+  document.querySelectorAll('.tv .tvlist').forEach(l=>{ const s=tvScr.get(l)||{w:0}; tvScr.set(l,s); const t=Date.now(); if(t<s.w) return; if(l.scrollHeight<=l.clientHeight+4) return;
+    if(l.scrollTop+l.clientHeight>=l.scrollHeight-2){ s.w=t+4000; if(!s.back){ s.back=true; return; } s.back=false; l.scrollTop=0; s.w=t+4000; return; } s.back=false; l.scrollTop+=2; });
+  },80);

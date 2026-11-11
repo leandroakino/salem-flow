@@ -163,8 +163,8 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 .tvi{position:relative;flex:none;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.3em .8em;background:var(--card);border-radius:.8em;border-left:.4em solid var(--c);padding:.75em .9em;cursor:pointer}
 .tvi.soon{background:var(--card-soon);border-left-color:var(--s-orange)}
 .tvi.late{background:var(--card-late);border-left-color:var(--s-red)}
-@keyframes tvAlert{0%,100%{box-shadow:0 0 .15em 0 rgba(255,138,125,.12)}50%{box-shadow:0 0 1em .08em rgba(255,138,125,.4)}}
-.tvi.late{animation:tvAlert 3.4s ease-in-out infinite}
+@keyframes tvAlert{0%,100%{opacity:.2}50%{opacity:1}}
+.tvi.late::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 1em .08em rgba(255,138,125,.42);opacity:.2;pointer-events:none;will-change:opacity;animation:tvAlert 3.4s ease-in-out infinite}
 .tvi:hover{outline:1px solid var(--muted)}
 .tvh{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:.8em}
 .tvh .n{font-family:var(--ff-display);font-weight:700;font-size:2em;line-height:1;font-variant-numeric:tabular-nums}
@@ -182,10 +182,12 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 .tvempty{margin:auto;text-align:center;color:var(--muted);padding:2em 1em;font-size:1.05em}
 @keyframes tvIn{from{opacity:0;transform:translateY(-14px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes tvGlow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 .22em var(--c),0 0 1.8em var(--c)}}
-.tvi.fx-new,.tvi.fx-moved{animation:tvIn .6s cubic-bezier(.2,.8,.2,1) both,tvGlow 1.2s ease-in-out 4}
+.tvi.fx-new,.tvi.fx-moved{animation:tvIn .6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes tvGlowO{0%,100%{opacity:0}50%{opacity:1}}
+.tvi.fx-new::before,.tvi.fx-moved::before{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 .22em var(--c),0 0 1.8em var(--c);opacity:0;pointer-events:none;will-change:opacity;animation:tvGlowO 1.2s ease-in-out 4}
 .tvtag{position:absolute;top:-.6em;right:.8em;background:var(--c);color:#0B120E;font-weight:800;font-size:.8em;padding:.1em .8em;border-radius:999px}
 @media (max-width:900px){.tv{height:auto;overflow:visible}.tvtop{flex-wrap:wrap}.tvcols{grid-template-columns:1fr}.tvlist{overflow:visible}}
-@media (prefers-reduced-motion:reduce){.tvi.late{animation:none;box-shadow:0 0 .8em rgba(255,138,125,.3)}.tvi.fx-new,.tvi.fx-moved{animation:none;outline:3px solid var(--c)}}
+@media (prefers-reduced-motion:reduce){.tvi.late::after{animation:none;opacity:.7}.tvi.fx-new,.tvi.fx-moved{animation:none;outline:3px solid var(--c)}.tvi.fx-new::before,.tvi.fx-moved::before{animation:none}}
 .tvi.late{outline:3px solid var(--s-red)}
 @media (max-width:640px){.itemrow{grid-template-columns:1fr 84px}.itemrow .full{grid-column:1/-1}.kv{grid-template-columns:100px 1fr}.bar{grid-template-columns:80px 1fr auto}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -915,10 +917,10 @@ function tvTick(){
 }
 setInterval(tvTick,15000);
 const tvScr=new Map();
-setInterval(()=>{ if(view!=='tv'||drawerId||Date.now()-tvIdle<30000) return;
-  document.querySelectorAll('.tv .tvlist').forEach(l=>{ if(l.scrollHeight<=l.clientHeight+4) return; const s=tvScr.get(l)||{w:0}; tvScr.set(l,s); const t=Date.now(); if(t<s.w) return;
-    if(l.scrollTop+l.clientHeight>=l.scrollHeight-2){ s.w=t+4000; if(!s.back){ s.back=true; return; } s.back=false; l.scrollTop=0; s.w=t+4000; return; } s.back=false; l.scrollTop+=1; });
-  tvTick(); },40);
+setInterval(()=>{ if(view!=='tv'||drawerId||document.hidden||Date.now()-tvIdle<30000) return;
+  document.querySelectorAll('.tv .tvlist').forEach(l=>{ const s=tvScr.get(l)||{w:0}; tvScr.set(l,s); const t=Date.now(); if(t<s.w) return; if(l.scrollHeight<=l.clientHeight+4) return;
+    if(l.scrollTop+l.clientHeight>=l.scrollHeight-2){ s.w=t+4000; if(!s.back){ s.back=true; return; } s.back=false; l.scrollTop=0; s.w=t+4000; return; } s.back=false; l.scrollTop+=2; });
+  },80);
 
 /* ---------- camadas, avisos, diálogos ---------- */
 const LY=id=>document.getElementById(id);
