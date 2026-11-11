@@ -321,7 +321,7 @@ H['o-direct']=async d=>{ const o=ordr(d);
   await oact(cur,{status:'recebido',skipProd:true,receivedBy:me.name,times:{recebidoAt:now()},...(plan.length?{directUsed:[...(cur.directUsed||[]),...plan]}:{})},'Sem produção','Produto do atendimento'+(plan.length?'. Baixa de '+S.stock[v.sid].name:''));
   await applyDirect(o.id,plan,o); toast(orderNum(o)+' enviado direto para retirada/entrega'); };
 H['p-accept']=d=>oact(ordr(d),{status:'aguardando_prod',responsible:me.name,times:{aceitoAt:now()}},'Aceito na fila de produção');
-H['p-start']=d=>{ const o=ordr(d), resume=o.status==='aguardando_material'; const pt={status:'em_producao',responsible:o.responsible||me.name,block:null,times:{}}; if(!(o.times&&o.times.inicioAt)) pt.times.inicioAt=now(); if(!(o.times&&o.times.aceitoAt)) pt.times.aceitoAt=now(); return oact(o,pt,resume?'Produção retomada':'Produção iniciada'); };
+H['p-start']=async d=>{ const o=ordr(d), resume=o.status==='aguardando_material'; const pt={status:'em_producao',responsible:o.responsible||me.name,block:null,times:{}}; if(!(o.times&&o.times.inicioAt)) pt.times.inicioAt=now(); if(!(o.times&&o.times.aceitoAt)) pt.times.aceitoAt=now(); await oact(o,pt,resume?'Produção retomada':'Produção iniciada'); if(!resume){ const n=await waitOrder(o.id); if(n) openFicha(n,'Produção iniciada. Imprima a ficha e cole no produto. Lá em cima, o número da ficha tem que bater com o pedido que subiu.'); } };
 H['p-resume']=d=>oact(ordr(d),{status:'em_producao',block:null,waitReason:null},'Produção retomada');
 async function newMatReq(orderId){
   const o=orderId&&S.orders[orderId];
