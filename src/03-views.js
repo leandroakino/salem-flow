@@ -92,8 +92,8 @@ function renderHdr(){
   $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i>${sy.t}</span>${me?`<span class="who"><b>${esc(me.name)}</b> · ${ROLES[me.role]}</span><button class="hbtn" data-act="logout">Trocar usuário</button>`:''}</div>`;
 }
 function fitBoards(){ document.querySelectorAll('#view .board').forEach(b=>{ b.style.removeProperty('--bh'); const top=b.getBoundingClientRect().top; const h=Math.max(300,Math.floor(window.innerHeight-top-44)); b.style.setProperty('--bh',h+'px'); }); }
-function boardScroll(){ const b=document.querySelector('#view .board'); if(!b) return null; return {x:b.scrollLeft,c:[...b.querySelectorAll('.col .cb')].map(e=>e.scrollTop),y:window.scrollY}; }
-function restoreBoard(s){ if(!s) return; const b=document.querySelector('#view .board'); if(!b) return; b.scrollLeft=s.x; b.querySelectorAll('.col .cb').forEach((e,i)=>{ if(s.c[i]) e.scrollTop=s.c[i]; }); }
+function boardScroll(){ const b=document.querySelector('#view .board,#view .tvcols'); if(!b) return null; return {x:b.scrollLeft,c:[...b.querySelectorAll('.col .cb,.tvlist')].map(e=>e.scrollTop),y:window.scrollY}; }
+function restoreBoard(s){ if(!s) return; const b=document.querySelector('#view .board,#view .tvcols'); if(!b) return; b.scrollLeft=s.x; b.querySelectorAll('.col .cb,.tvlist').forEach((e,i)=>{ if(s.c[i]) e.scrollTop=s.c[i]; }); }
 window.addEventListener('resize',()=>fitBoards()); window.addEventListener('orientationchange',()=>setTimeout(fitBoards,200));
 function render(force){
   dirty=false;
@@ -107,7 +107,7 @@ function render(force){
   }
   renderHdr();
   if(!me){ renderLogin(); $('#nav').innerHTML=''; return; }
-  if(tv){ if(!wlOn){ wlOn=true; try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){} } $('#view').innerHTML=viewTV(); return; }
+  if(tv){ if(!wlOn){ wlOn=true; try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){} } const bs=boardScroll(); $('#view').innerHTML=viewTV(); restoreBoard(bs); tvTick(); return; }
   const allowed=NAV[R()];
   if(!allowed.includes(view)) view=allowed[0];
   const P=pendencies();
@@ -420,12 +420,44 @@ function tvTrack(panels){
   Object.keys(tvFx).forEach(k=>{ if(t-tvFx[k].at>9000) delete tvFx[k]; });
   tvPrev=cur; tvPrevAt=t;
 }
+const fmtMin=m=>m<60?m+' min':Math.floor(m/60)+'h'+(m%60?p2(m%60):'');
+function tvWhen(dl){ if(dl==null) return {k:'',t:''}; const m=Math.round((dl-now())/60000); return m<0?{k:'late',t:'Atrasado '+fmtMin(-m)}:m<90?{k:'soon',t:'em '+fmtMin(m)}:{k:'',t:'no prazo'}; }
+function tvCard(o,c,pi){
+  const fx=tvFx[o.id+'|'+pi], el=fx?now()-fx.at:0, dl=deadline(o), w=tvWhen(dl), on=fx&&el<8000;
+  const its=(o.items||[]).filter(i=>!i.direct);
+  const rows=its.length?its.map(i=>`<div class="it"><em>${esc(i.qty)}×</em>${esc(i.name)}${i.desc?`<span class="d">${esc(i.desc)}</span>`:''}</div>`).join(''):`<div class="it">${esc(prodItemsText(o))}</div>`;
+  const flag=o.status==='aguardando_material'?'Falta material':o.status==='bloqueado'?'Bloqueado':'';
+  const ph=o.photos&&o.photos.length?`<img class="ph" src="/_blob/${esc(o.photos[0].id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(o.photos[0].id)}">`:'';
+  return `<article class="tvi ${w.k} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
+    <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
+    <div class="tvb">${rows}${flag?`<span class="flag">${flag}</span>`:''}${o.buildNotes?`<p class="nt">Montagem: ${esc(o.buildNotes)}</p>`:''}</div>${ph}</article>`;
+}
 function viewTV(){
   const O=arr('orders').filter(o=>PIPE.includes(o.status)&&isActive(o));
   const sort=L=>L.sort((a,b)=>(deadline(a)||9e15)-(deadline(b)||9e15));
-  const panels=[['Aguardando produção','violet',sort(O.filter(o=>['liberado','aguardando_prod'].includes(o.status)))],['Em produção','amber',sort(O.filter(o=>['em_producao','aguardando_material','bloqueado'].includes(o.status)))],['Próximos do prazo','orange',sort(O.filter(isSoon))],['Atrasados','red',sort(O.filter(isLate))],['Prontos para subir','green',sort(O.filter(o=>['finalizado','pronto_subir','em_transporte'].includes(o.status)))]];
+  const panels=[['Aguardando produção','violet',sort(O.filter(o=>['liberado','aguardando_prod'].includes(o.status)))],['Em produção','amber',sort(O.filter(o=>['em_producao','aguardando_material','bloqueado'].includes(o.status)))],['Prontos para subir','green',sort(O.filter(o=>['finalizado','pronto_subir','em_transporte'].includes(o.status)))]];
   tvTrack(panels);
-  const d=new Date(), mx=Math.max(...panels.map(p=>p[2].length)), dens=mx<=4?'d1':mx<=7?'d2':'d3';
-  return `<div class="tv ${dens}"><div class="tvtop"><div class="brand" style="color:var(--ink)">${LEAF}Salém Flow · Produção</div><div class="clock">${p2(d.getHours())}:${p2(d.getMinutes())}</div><div class="row"><button class="hbtn" data-act="tv-full" style="color:var(--ink)">Tela cheia</button><button class="hbtn" data-act="nav" data-v="${NAV[R()][0]}" style="color:var(--ink)">Sair do painel</button></div></div>
-    <div class="tvgrid">${panels.map(([t,c,L],pi)=>`<section class="tvp" style="--c:var(--s-${c})"><h3><span>${t}</span><span>${L.length}</span></h3>${L.map(o=>{ const fx=tvFx[o.id+'|'+pi], el=fx?now()-fx.at:0; return `<div class="tvi ${isLate(o)?'late':''} ${fx&&el<8000?'fx-'+fx.k:''}" ${fx&&el<8000?`style="animation-delay:${-el}ms,${700-el}ms"`:''} data-act="o-open" data-id="${o.id}">${fx&&el<8000?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}${o.photos&&o.photos.length?`<img class="ph" src="/_blob/${esc(o.photos[0].id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(o.photos[0].id)}">`:''}<div class="tvb"><div class="tvh"><span class="n">${orderNum(o)}</span><span class="h">${o.time||'--:--'}</span></div><span class="p">${esc(prodItemsText(o))}${o.status==='aguardando_material'?' · falta material':''}${o.status==='bloqueado'?' · bloqueado':''}</span>${(o.items||[]).filter(i=>i.desc&&!i.direct).map(i=>`<span class="d">${(o.items||[]).filter(x=>!x.direct).length>1?esc(i.name)+': ':''}${esc(i.desc)}</span>`).join('')}${o.buildNotes?`<span class="d nt">Montagem: ${esc(o.buildNotes)}</span>`:''}</div></div>`}).join('')||'<div class="muted" style="font-size:1.1rem">Nenhum pedido</div>'}</section>`).join('')}</div></div>`;
+  const late=O.filter(isLate).length, soon=O.filter(isSoon).length, ctl=!!me;
+  const stale=!navigator.onLine||staleMsg;
+  return `<div class="tv"><div class="tvtop"><div class="brand">${LEAF}Produção</div>
+    <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
+    <div class="tvclock"><b id="tvclock"></b><span id="tvdate"></span></div>
+    ${ctl?`<div class="tvctl"><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button></div>`:''}</div>
+    <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${L.map(o=>tvCard(o,c,pi)).join('')||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
 }
+let tvIdle=Date.now();
+['pointermove','wheel','touchstart','keydown','pointerdown'].forEach(e=>document.addEventListener(e,()=>{ tvIdle=Date.now(); },{passive:true,capture:true}));
+function tvTick(){
+  if(view!=='tv') return;
+  const d=new Date(), c=$('#tvclock'); if(!c) return;
+  c.textContent=p2(d.getHours())+':'+p2(d.getMinutes());
+  try{ $('#tvdate').textContent=d.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}).replace(/\./g,''); }catch(e){}
+  document.querySelectorAll('.tv .tvi small[data-dl]').forEach(s=>{ const dl=s.dataset.dl; const w=tvWhen(dl===''?null:+dl); s.textContent=w.t; const card=s.closest('.tvi'); card.classList.toggle('late',w.k==='late'); card.classList.toggle('soon',w.k==='soon'); });
+  document.querySelectorAll('.tv .tvlist').forEach(l=>l.classList.toggle('has-more',l.scrollHeight>l.clientHeight+4&&l.scrollTop+l.clientHeight<l.scrollHeight-4));
+}
+setInterval(tvTick,15000);
+const tvScr=new Map();
+setInterval(()=>{ if(view!=='tv'||drawerId||Date.now()-tvIdle<30000) return;
+  document.querySelectorAll('.tv .tvlist').forEach(l=>{ if(l.scrollHeight<=l.clientHeight+4) return; const s=tvScr.get(l)||{w:0}; tvScr.set(l,s); const t=Date.now(); if(t<s.w) return;
+    if(l.scrollTop+l.clientHeight>=l.scrollHeight-2){ s.w=t+4000; if(!s.back){ s.back=true; return; } s.back=false; l.scrollTop=0; s.w=t+4000; return; } s.back=false; l.scrollTop+=1; });
+  tvTick(); },40);

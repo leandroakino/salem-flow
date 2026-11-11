@@ -135,35 +135,54 @@ tr:last-child td{border-bottom:0}
 .slip svg{display:block;margin:0 auto;max-width:100%}
 .slip .s-i{margin-bottom:5px;font-weight:700}.slip .s-i span{font-weight:400}
 .slip .s-f{text-align:center;margin-top:8px}.slip .s-l{font-weight:700;font-size:13px;margin-top:8px;border-top:1px solid #000;padding-top:3px}.slip .s-v{margin-bottom:2px}.slip .s-big{font-weight:700;font-size:16px}.slip .s-f.small{font-size:10px}
-/* TV (somente leitura; tamanhos em em, sem zoom, para TVs de navegador simples) */
-.tv{--surface:#142019;--surface2:#1B2A21;--ink:#EAF2EC;--muted:#9BB0A2;--line:#27382E;--s-blue:#86AEFF;--s-violet:#B2A0FF;--s-amber:#F0B45A;--s-orange:#FF9A6B;--s-teal:#4FD1C0;--s-green:#62D58A;--s-sky:#6CC4F0;--s-red:#FF8A7D;color:var(--ink);min-height:calc(100vh / 1.5);font-size:16px;padding:.8em 1em 1.2em;--tn:2.1em;--tp:1.2em;--th:1.6em;--tph:4.5em;--tpad:.5em .7em}
+/* Painel TV: quadro de produção. Escala por largura da tela (TV 32" e computador), sem zoom */
+.tv{--surface:#142019;--surface2:#1B2A21;--ink:#EAF2EC;--muted:#9BB0A2;--line:#27382E;--s-blue:#86AEFF;--s-violet:#B2A0FF;--s-amber:#F0B45A;--s-orange:#FF9A6B;--s-teal:#4FD1C0;--s-green:#62D58A;--s-sky:#6CC4F0;--s-red:#FF8A7D;--bg:#0B120E;--card:#18251D;--card-late:#2D1D1B;--card-soon:#2B2418;
+  color:var(--ink);font-family:var(--ff-body);font-size:clamp(14px,.62vw + 8px,30px);height:100vh;display:grid;grid-template-rows:auto minmax(0,1fr);gap:.9em;padding:1em 1.2em 1.2em;overflow:hidden}
 body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
-body.is-tv .tv{zoom:1.5}
-.tvi{cursor:pointer}.tvi .ph{cursor:zoom-in}
-.tvtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6em;gap:.8em}
-.tvtop .brand{font-size:1.3em}.tvtop .clock{font-family:var(--ff-display);font-size:3em;font-weight:700;font-variant-numeric:tabular-nums}
-.tvtop .tvr{display:flex;gap:.6em;align-items:center;min-width:8em;justify-content:flex-end}
-.tvsync{background:var(--s-red);color:#0B120E;font-weight:700;border-radius:999px;padding:.2em .8em;font-size:.8em}
-.tvgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.7em}
-@media (max-width:900px){.tvgrid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
-.tvp{background:var(--surface);border:1px solid var(--line);border-top:.35em solid var(--c);border-radius:1em;padding:.7em;display:flex;flex-direction:column;gap:.55em;min-height:12em}
-.tvp>h3{font-size:1.2em;display:flex;justify-content:space-between;align-items:baseline;gap:.4em;color:var(--c)}
-.tvi{position:relative;display:flex;gap:.7em;align-items:center;background:var(--surface2);border-radius:.7em;padding:var(--tpad)}
-.tvi .tvb{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:.15em}
-.tvi .tvh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:.05em .6em}
-.tv.d2{--tn:1.6em;--tp:.95em;--th:1.25em;--tph:3.4em;--tpad:.35em .55em}
-.tv.d3{--tn:1.25em;--tp:.85em;--th:1em;--tph:2.6em;--tpad:.25em .45em}
-.tv.d2 .tvp,.tv.d3 .tvp{gap:.35em;padding:.55em}.tv.d2 .tvgrid,.tv.d3 .tvgrid{gap:.5em}
-.tv.d3 .tvi .tvh{flex-wrap:nowrap}.tv.d3 .tvi{gap:.5em}
-.tvi .n{font-family:var(--ff-display);font-weight:700;font-size:var(--tn);font-variant-numeric:tabular-nums;line-height:1.1}
-.tvi .p{font-size:var(--tp);font-weight:600;overflow-wrap:anywhere}
-.tvi .d{font-size:calc(var(--tp)*.9);font-weight:500;color:var(--muted);overflow-wrap:anywhere}.tvi .d.nt{color:var(--s-amber);font-weight:600}.tv.d3 .tvi .d{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.tvi .h{font-family:var(--ff-display);font-weight:700;font-size:var(--th);font-variant-numeric:tabular-nums;line-height:1.1}
-.tvi .ph{flex:none;width:var(--tph);height:var(--tph);object-fit:cover;border-radius:.5em;border:1px solid var(--line)}
-@keyframes tvIn{from{opacity:0;transform:translateX(70px) scale(.95)}to{opacity:1;transform:none}}
-@keyframes tvGlow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 5px var(--c),0 0 34px var(--c)}}
-.tvi.fx-new,.tvi.fx-moved{animation:tvIn .7s cubic-bezier(.2,.8,.2,1) both,tvGlow 1.3s ease-in-out 5}
-.tvtag{position:absolute;top:-.55em;right:.7em;background:var(--c);color:#0B120E;font-weight:800;font-size:.75em;letter-spacing:.06em;padding:.1em .7em;border-radius:999px}
+.tvtop{display:flex;align-items:center;gap:1.4em}
+.tvtop .brand{font-family:var(--ff-display);font-weight:700;font-size:1.35em;color:var(--ink);display:flex;align-items:center;gap:.4em;white-space:nowrap}
+.tvkpi{display:flex;gap:.6em;flex:1;min-width:0;flex-wrap:wrap}
+.kpi{display:flex;align-items:baseline;gap:.5em;padding:.35em .9em;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:.95em;color:var(--muted);white-space:nowrap}
+.kpi b{font-family:var(--ff-display);font-size:1.5em;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1}
+.kpi.k-late.on{background:var(--card-late);border-color:var(--s-red);color:var(--s-red)}.kpi.k-late.on b{color:var(--s-red)}
+.kpi.k-soon.on{background:var(--card-soon);border-color:var(--s-orange);color:var(--s-orange)}.kpi.k-soon.on b{color:var(--s-orange)}
+.tvclock{text-align:right;line-height:1.05;white-space:nowrap}
+.tvclock b{display:block;font-family:var(--ff-display);font-size:2.6em;font-weight:700;font-variant-numeric:tabular-nums}
+.tvclock span{font-size:.9em;color:var(--muted)}
+.tvctl{display:flex;gap:.4em}.tvbtn{font:inherit;font-size:.8em;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:.6em;padding:.35em .8em;cursor:pointer}.tvbtn:hover,.tvbtn:focus-visible{color:var(--ink);border-color:var(--muted)}
+.tvsync{background:var(--s-red);color:#0B120E;font-weight:700;border-radius:999px;padding:.25em .9em;font-size:.85em;white-space:nowrap}
+.tvcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1em;min-height:0}
+.tvcol{display:flex;flex-direction:column;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:1.1em;overflow:hidden}
+.tvch{display:flex;align-items:center;gap:.6em;padding:.8em 1em;border-bottom:1px solid var(--line);flex:none}
+.tvch i{width:.8em;height:.8em;border-radius:50%;background:var(--c)}
+.tvch h3{font-size:1.25em;flex:1;color:var(--ink)}
+.tvch .ct{font-family:var(--ff-display);font-weight:700;font-size:1.5em;min-width:1.9em;text-align:center;padding:0 .4em;border-radius:.6em;background:var(--c);color:#0B120E;font-variant-numeric:tabular-nums}
+.tvlist{flex:1;min-height:0;overflow-y:auto;padding:.8em;display:flex;flex-direction:column;gap:.7em;scrollbar-width:none}
+.tvlist::-webkit-scrollbar{display:none}
+.tvlist.has-more{-webkit-mask-image:linear-gradient(#000 calc(100% - 3em),transparent);mask-image:linear-gradient(#000 calc(100% - 3em),transparent)}
+.tvi{position:relative;flex:none;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.3em .8em;background:var(--card);border-radius:.8em;border-left:.4em solid var(--c);padding:.75em .9em;cursor:pointer}
+.tvi.soon{background:var(--card-soon);border-left-color:var(--s-orange)}
+.tvi.late{background:var(--card-late);border-left-color:var(--s-red)}
+.tvi:hover{outline:1px solid var(--muted)}
+.tvh{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:.8em}
+.tvh .n{font-family:var(--ff-display);font-weight:700;font-size:2em;line-height:1;font-variant-numeric:tabular-nums}
+.tvh .ty{font-size:.85em;color:var(--muted);margin-left:.6em;font-weight:500}
+.tvt{text-align:right;line-height:1.1}
+.tvt b{display:block;font-family:var(--ff-display);font-size:1.7em;font-variant-numeric:tabular-nums}
+.tvt small{font-size:.9em;font-weight:700;color:var(--muted)}
+.tvi.soon .tvt small{color:var(--s-orange)}.tvi.late .tvt small,.tvi.late .tvt b{color:var(--s-red)}
+.tvb{min-width:0;display:flex;flex-direction:column;gap:.45em}
+.it{font-size:1.2em;font-weight:700;line-height:1.25;overflow-wrap:anywhere}.it em{font-style:normal;color:var(--c);margin-right:.3em}
+.it .d{display:block;font-size:.85em;font-weight:500;color:var(--muted);margin-top:.1em}
+.nt{margin:0;font-size:1em;font-weight:600;color:var(--s-amber);background:rgba(240,180,90,.1);border-radius:.5em;padding:.35em .6em;overflow-wrap:anywhere}
+.flag{align-self:flex-start;font-size:.85em;font-weight:700;color:var(--s-red);border:1px solid var(--s-red);border-radius:999px;padding:.05em .7em}
+.tvi .ph{width:6.2em;height:6.2em;object-fit:cover;border-radius:.6em;align-self:start;cursor:zoom-in;border:1px solid var(--line)}
+.tvempty{margin:auto;text-align:center;color:var(--muted);padding:2em 1em;font-size:1.05em}
+@keyframes tvIn{from{opacity:0;transform:translateY(-14px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes tvGlow{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 .22em var(--c),0 0 1.8em var(--c)}}
+.tvi.fx-new,.tvi.fx-moved{animation:tvIn .6s cubic-bezier(.2,.8,.2,1) both,tvGlow 1.2s ease-in-out 4}
+.tvtag{position:absolute;top:-.6em;right:.8em;background:var(--c);color:#0B120E;font-weight:800;font-size:.8em;padding:.1em .8em;border-radius:999px}
+@media (max-width:900px){.tv{height:auto;overflow:visible}.tvtop{flex-wrap:wrap}.tvcols{grid-template-columns:1fr}.tvlist{overflow:visible}}
 @media (prefers-reduced-motion:reduce){.tvi.fx-new,.tvi.fx-moved{animation:none;outline:3px solid var(--c)}}
 .tvi.late{outline:3px solid var(--s-red)}
 @media (max-width:640px){.itemrow{grid-template-columns:1fr 84px}.itemrow .full{grid-column:1/-1}.kv{grid-template-columns:100px 1fr}.bar{grid-template-columns:80px 1fr auto}}
@@ -523,8 +542,8 @@ function renderHdr(){
   $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i>${sy.t}</span>${me?`<span class="who"><b>${esc(me.name)}</b> · ${ROLES[me.role]}</span><button class="hbtn" data-act="logout">Trocar usuário</button>`:''}</div>`;
 }
 function fitBoards(){ document.querySelectorAll('#view .board').forEach(b=>{ b.style.removeProperty('--bh'); const top=b.getBoundingClientRect().top; const h=Math.max(300,Math.floor(window.innerHeight-top-44)); b.style.setProperty('--bh',h+'px'); }); }
-function boardScroll(){ const b=document.querySelector('#view .board'); if(!b) return null; return {x:b.scrollLeft,c:[...b.querySelectorAll('.col .cb')].map(e=>e.scrollTop),y:window.scrollY}; }
-function restoreBoard(s){ if(!s) return; const b=document.querySelector('#view .board'); if(!b) return; b.scrollLeft=s.x; b.querySelectorAll('.col .cb').forEach((e,i)=>{ if(s.c[i]) e.scrollTop=s.c[i]; }); }
+function boardScroll(){ const b=document.querySelector('#view .board,#view .tvcols'); if(!b) return null; return {x:b.scrollLeft,c:[...b.querySelectorAll('.col .cb,.tvlist')].map(e=>e.scrollTop),y:window.scrollY}; }
+function restoreBoard(s){ if(!s) return; const b=document.querySelector('#view .board,#view .tvcols'); if(!b) return; b.scrollLeft=s.x; b.querySelectorAll('.col .cb,.tvlist').forEach((e,i)=>{ if(s.c[i]) e.scrollTop=s.c[i]; }); }
 window.addEventListener('resize',()=>fitBoards()); window.addEventListener('orientationchange',()=>setTimeout(fitBoards,200));
 function render(force){
   dirty=false;
@@ -538,7 +557,7 @@ function render(force){
   }
   renderHdr();
   if(!me){ renderLogin(); $('#nav').innerHTML=''; return; }
-  if(tv){ if(!wlOn){ wlOn=true; try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){} } $('#view').innerHTML=viewTV(); return; }
+  if(tv){ if(!wlOn){ wlOn=true; try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){} } const bs=boardScroll(); $('#view').innerHTML=viewTV(); restoreBoard(bs); tvTick(); return; }
   const allowed=NAV[R()];
   if(!allowed.includes(view)) view=allowed[0];
   const P=pendencies();
@@ -851,15 +870,47 @@ function tvTrack(panels){
   Object.keys(tvFx).forEach(k=>{ if(t-tvFx[k].at>9000) delete tvFx[k]; });
   tvPrev=cur; tvPrevAt=t;
 }
+const fmtMin=m=>m<60?m+' min':Math.floor(m/60)+'h'+(m%60?p2(m%60):'');
+function tvWhen(dl){ if(dl==null) return {k:'',t:''}; const m=Math.round((dl-now())/60000); return m<0?{k:'late',t:'Atrasado '+fmtMin(-m)}:m<90?{k:'soon',t:'em '+fmtMin(m)}:{k:'',t:'no prazo'}; }
+function tvCard(o,c,pi){
+  const fx=tvFx[o.id+'|'+pi], el=fx?now()-fx.at:0, dl=deadline(o), w=tvWhen(dl), on=fx&&el<8000;
+  const its=(o.items||[]).filter(i=>!i.direct);
+  const rows=its.length?its.map(i=>`<div class="it"><em>${esc(i.qty)}×</em>${esc(i.name)}${i.desc?`<span class="d">${esc(i.desc)}</span>`:''}</div>`).join(''):`<div class="it">${esc(prodItemsText(o))}</div>`;
+  const flag=o.status==='aguardando_material'?'Falta material':o.status==='bloqueado'?'Bloqueado':'';
+  const ph=o.photos&&o.photos.length?`<img class="ph" src="/_blob/${esc(o.photos[0].id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(o.photos[0].id)}">`:'';
+  return `<article class="tvi ${w.k} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
+    <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
+    <div class="tvb">${rows}${flag?`<span class="flag">${flag}</span>`:''}${o.buildNotes?`<p class="nt">Montagem: ${esc(o.buildNotes)}</p>`:''}</div>${ph}</article>`;
+}
 function viewTV(){
   const O=arr('orders').filter(o=>PIPE.includes(o.status)&&isActive(o));
   const sort=L=>L.sort((a,b)=>(deadline(a)||9e15)-(deadline(b)||9e15));
-  const panels=[['Aguardando produção','violet',sort(O.filter(o=>['liberado','aguardando_prod'].includes(o.status)))],['Em produção','amber',sort(O.filter(o=>['em_producao','aguardando_material','bloqueado'].includes(o.status)))],['Próximos do prazo','orange',sort(O.filter(isSoon))],['Atrasados','red',sort(O.filter(isLate))],['Prontos para subir','green',sort(O.filter(o=>['finalizado','pronto_subir','em_transporte'].includes(o.status)))]];
+  const panels=[['Aguardando produção','violet',sort(O.filter(o=>['liberado','aguardando_prod'].includes(o.status)))],['Em produção','amber',sort(O.filter(o=>['em_producao','aguardando_material','bloqueado'].includes(o.status)))],['Prontos para subir','green',sort(O.filter(o=>['finalizado','pronto_subir','em_transporte'].includes(o.status)))]];
   tvTrack(panels);
-  const d=new Date(), mx=Math.max(...panels.map(p=>p[2].length)), dens=mx<=4?'d1':mx<=7?'d2':'d3';
-  return `<div class="tv ${dens}"><div class="tvtop"><div class="brand" style="color:var(--ink)">${LEAF}Salém Flow · Produção</div><div class="clock">${p2(d.getHours())}:${p2(d.getMinutes())}</div><div class="row"><button class="hbtn" data-act="tv-full" style="color:var(--ink)">Tela cheia</button><button class="hbtn" data-act="nav" data-v="${NAV[R()][0]}" style="color:var(--ink)">Sair do painel</button></div></div>
-    <div class="tvgrid">${panels.map(([t,c,L],pi)=>`<section class="tvp" style="--c:var(--s-${c})"><h3><span>${t}</span><span>${L.length}</span></h3>${L.map(o=>{ const fx=tvFx[o.id+'|'+pi], el=fx?now()-fx.at:0; return `<div class="tvi ${isLate(o)?'late':''} ${fx&&el<8000?'fx-'+fx.k:''}" ${fx&&el<8000?`style="animation-delay:${-el}ms,${700-el}ms"`:''} data-act="o-open" data-id="${o.id}">${fx&&el<8000?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}${o.photos&&o.photos.length?`<img class="ph" src="/_blob/${esc(o.photos[0].id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(o.photos[0].id)}">`:''}<div class="tvb"><div class="tvh"><span class="n">${orderNum(o)}</span><span class="h">${o.time||'--:--'}</span></div><span class="p">${esc(prodItemsText(o))}${o.status==='aguardando_material'?' · falta material':''}${o.status==='bloqueado'?' · bloqueado':''}</span>${(o.items||[]).filter(i=>i.desc&&!i.direct).map(i=>`<span class="d">${(o.items||[]).filter(x=>!x.direct).length>1?esc(i.name)+': ':''}${esc(i.desc)}</span>`).join('')}${o.buildNotes?`<span class="d nt">Montagem: ${esc(o.buildNotes)}</span>`:''}</div></div>`}).join('')||'<div class="muted" style="font-size:1.1rem">Nenhum pedido</div>'}</section>`).join('')}</div></div>`;
+  const late=O.filter(isLate).length, soon=O.filter(isSoon).length, ctl=!!me;
+  const stale=!navigator.onLine||staleMsg;
+  return `<div class="tv"><div class="tvtop"><div class="brand">${LEAF}Produção</div>
+    <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
+    <div class="tvclock"><b id="tvclock"></b><span id="tvdate"></span></div>
+    ${ctl?`<div class="tvctl"><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button></div>`:''}</div>
+    <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${L.map(o=>tvCard(o,c,pi)).join('')||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
 }
+let tvIdle=Date.now();
+['pointermove','wheel','touchstart','keydown','pointerdown'].forEach(e=>document.addEventListener(e,()=>{ tvIdle=Date.now(); },{passive:true,capture:true}));
+function tvTick(){
+  if(view!=='tv') return;
+  const d=new Date(), c=$('#tvclock'); if(!c) return;
+  c.textContent=p2(d.getHours())+':'+p2(d.getMinutes());
+  try{ $('#tvdate').textContent=d.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}).replace(/\./g,''); }catch(e){}
+  document.querySelectorAll('.tv .tvi small[data-dl]').forEach(s=>{ const dl=s.dataset.dl; const w=tvWhen(dl===''?null:+dl); s.textContent=w.t; const card=s.closest('.tvi'); card.classList.toggle('late',w.k==='late'); card.classList.toggle('soon',w.k==='soon'); });
+  document.querySelectorAll('.tv .tvlist').forEach(l=>l.classList.toggle('has-more',l.scrollHeight>l.clientHeight+4&&l.scrollTop+l.clientHeight<l.scrollHeight-4));
+}
+setInterval(tvTick,15000);
+const tvScr=new Map();
+setInterval(()=>{ if(view!=='tv'||drawerId||Date.now()-tvIdle<30000) return;
+  document.querySelectorAll('.tv .tvlist').forEach(l=>{ if(l.scrollHeight<=l.clientHeight+4) return; const s=tvScr.get(l)||{w:0}; tvScr.set(l,s); const t=Date.now(); if(t<s.w) return;
+    if(l.scrollTop+l.clientHeight>=l.scrollHeight-2){ s.w=t+4000; if(!s.back){ s.back=true; return; } s.back=false; l.scrollTop=0; s.w=t+4000; return; } s.back=false; l.scrollTop+=1; });
+  tvTick(); },40);
 
 /* ---------- camadas, avisos, diálogos ---------- */
 const LY=id=>document.getElementById(id);

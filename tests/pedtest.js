@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const dir = __dirname;
-const page_html = fs.readFileSync(dir + '/page.html', 'utf8');
+const page_html = fs.readFileSync(dir + '/../dist/index.html', 'utf8');
 const wrapped = '<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>' + page_html + '</body></html>';
 
 const mock = `
