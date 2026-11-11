@@ -13,7 +13,7 @@ function fieldHTML(f){
   let ctl;
   if(f.type==='select') ctl=`<select class="sel" id="${id}">${(f.options||[]).map(o=>{const ov=typeof o==='object'?o.v:o, ol=typeof o==='object'?o.l:o; return `<option value="${esc(ov)}" ${String(ov)===String(v)?'selected':''}>${esc(ol)}</option>`;}).join('')}</select>`;
   else if(f.type==='textarea') ctl=`<textarea class="txt" id="${id}">${esc(v)}</textarea>`;
-  else ctl=`<input class="inp" id="${id}" type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" ${f.type==='number'?'step="any" min="0"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''} autocomplete="off">`;
+  else ctl=`<input class="inp" id="${id}" type="${f.type==='number'?'number':f.type==='date'?'date':f.type==='password'?'password':'text'}" ${f.type==='number'?'step="any" min="0"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''} autocomplete="off">`;
   return `<label class="fld"><span>${esc(f.label)}${f.required?' *':''}</span>${ctl}</label>`;
 }
 function ask(o){
@@ -25,7 +25,7 @@ function ask(o){
       e.preventDefault(); const v={};
       for(const fl of f){
         if(fl.type==='note') continue; const el=$('#q-'+fl.id);
-        v[fl.id]=fl.type==='checkbox'?el.checked:fl.type==='number'?(el.value===''?0:Number(el.value)):el.value.trim();
+        v[fl.id]=fl.type==='checkbox'?el.checked:fl.type==='number'?(el.value===''?0:Number(el.value)):fl.type==='password'?el.value:el.value.trim();
         if(fl.required&&(fl.type==='number'?!(v[fl.id]>0):!v[fl.id])){ toast('Preencha: '+fl.label,true); el.focus(); return; }
       }
       close(v);
@@ -240,16 +240,17 @@ async function loadDemo(){
 }
 async function setup(){
   const name=$('#su-name').value.trim(); if(!name){ toast('Informe o nome do administrador',true); return; }
-  const id='u'+uid(); await put('users',id,{name,role:'admin',active:true});
+  const p1=$('#su-pw').value, p2=$('#su-pw2').value; if(p1.length<6){ toast('A senha precisa ter pelo menos 6 caracteres',true); return; } if(p1!==p2){ toast('As senhas não conferem',true); return; }
+  const id='u'+uid(); await put('users',id,{name,role:'admin',active:true,pw:await pwHash(p1)});
   if($('#su-team').checked) for(const [n,r] of [['Atendimento 1','atendimento'],['Atendimento 2','atendimento'],['Produção','producao']]) await put('users','u'+uid(),{name:n,role:r,active:true});
   if($('#su-demo').checked) await loadDemo();
   doLogin(id);
 }
-function doLogin(id){ const u=S.users[id]; if(!u) return; me={id:u.id,name:u.name,role:u.role}; lsSet('salem.me',id); initView(); render(); }
+function doLogin(id){ const u=S.users[id]; if(!u) return; me={id:u.id,name:u.name,role:u.role}; lsSet('salem.me',id); lsSet('salem.meAt',String(Date.now())); initView(); render(); }
 function initView(){ const h=(location.hash||'').replace('#',''); const allowed=NAV[R()].concat(['tv']); view=allowed.includes(h)?h:({admin:'dash',atendimento:'pedidos',producao:'fila',entregador:'minhas'})[R()]; }
 function autoLogin(){
   if(me){ const u=S.users[me.id]; me=(u&&u.active!==false)?{id:u.id,name:u.name,role:u.role}:null; return; }
-  const id=lsGet('salem.me'); const u=id&&S.users[id]; if(u&&u.active!==false){ me={id:u.id,name:u.name,role:u.role}; initView(); }
+  const id=lsGet('salem.me'); const u=id&&S.users[id]; const at=Number(lsGet('salem.meAt'))||0; if(u&&u.active!==false&&!(u.role==='admin'&&u.pw&&Date.now()-at>8*3600*1000)){ me={id:u.id,name:u.name,role:u.role}; initView(); setTimeout(enforcePw,300); }
 }
 
 /* ---------- exportação ---------- */
@@ -285,8 +286,29 @@ function tvDialog(){
   $('#tv-copy').onclick=async()=>{ try{ await navigator.clipboard.writeText(TV_URL); toast('Link copiado'); }catch(e){ toast('Não consegui copiar. Use o botão "Abrir o painel em uma nova aba".',true); } };
 }
 H.nav=d=>{ if(d.v==='tv'){ tvDialog(); return; } closeLayer('drawer'); setView(d.v); };
-H.logout=()=>{ me=null; lsSet('salem.me',''); ['drawer','form','dlg'].forEach(closeLayer); render(); };
-H.login=d=>doLogin(d.id);
+H.logout=()=>{ me=null; lsSet('salem.me',''); lsSet('salem.meAt',''); ['drawer','form','dlg'].forEach(closeLayer); render(); };
+const pwFail={};
+let pwAsk=false;
+async function createPw(u,note){
+  const v=await ask({title:'Criar senha',ok:'Salvar senha',note,fields:[{id:'a',label:'Nova senha (mínimo 6 caracteres)',type:'password',required:true},{id:'b',label:'Repita a nova senha',type:'password',required:true}]});
+  if(!v) return false;
+  if(v.a.length<6) throw new Error('A senha precisa ter pelo menos 6 caracteres');
+  if(v.a!==v.b) throw new Error('As senhas não conferem');
+  await patch('users',u.id,{pw:await pwHash(v.a)}); await logEv('Senha definida',u.name); toast('Senha salva'); return true;
+}
+async function askPw(u){
+  const f=pwFail[u.id]||{n:0,until:0}; const wait=Math.ceil((f.until-now())/1000);
+  if(wait>0) throw new Error('Muitas tentativas erradas. Aguarde '+wait+' segundos.');
+  const v=await ask({title:'Senha de '+u.name,ok:'Entrar',fields:[{id:'p',label:'Senha',type:'password',required:true}]});
+  if(!v) return false;
+  if(await pwCheck(u,v.p)){ pwFail[u.id]={n:0,until:0}; return true; }
+  f.n++; if(f.n>=5){ f.n=0; f.until=now()+60000; } pwFail[u.id]=f; await logEv('Senha errada',u.name);
+  throw new Error('Senha incorreta');
+}
+H.login=async d=>{ const u=S.users[d.id]; if(!u) return; const ok=u.pw?await askPw(u):await createPw(u,'Este é o seu primeiro acesso com senha. Crie a sua para entrar. Ela será pedida nos próximos acessos.'); if(!ok) return; doLogin(u.id); await logEv('Login',u.name); };
+H['pw-change']=async()=>{ const u=S.users[me.id]; if(u.pw){ const ok=await askPw(u); if(!ok) return; } await createPw(u,'Escolha a nova senha.'); };
+H['u-pw']=async d=>{ const u=S.users[d.id]; if(!(await confirmDlg('Redefinir a senha de '+u.name+'?','A senha atual deixa de valer. No próximo acesso, '+u.name+' cria uma nova.'))) return; await patch('users',u.id,{pw:null}); await logEv('Senha redefinida',u.name); toast('Senha redefinida'); };
+async function enforcePw(){ if(!me||pwAsk) return; const u=S.users[me.id]; if(!u||u.pw) return; pwAsk=true; try{ const ok=await createPw(u,'Para continuar, crie uma senha. Ela será pedida nos próximos acessos.'); if(!ok) H.logout(); }catch(e){ toast(e.message||'Erro',true); H.logout(); } finally{ pwAsk=false; } }
 H.setup=()=>setup();
 H['close-drawer']=()=>closeLayer('drawer');
 H['f-close']=()=>{ closeLayer('form'); FM=null; };

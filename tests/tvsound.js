@@ -53,7 +53,7 @@ const mock = `
   await page.route('http://salem.test/', r=>r.fulfill({contentType:'text/html',body:wrapped}));
   await page.goto('http://salem.test/',{waitUntil:'domcontentloaded'});
   const ok=(n,c)=>console.log(c?'OK  ':'FAIL',n);
-  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
+  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
   await page.evaluate(()=>{ window.__store['orders/o1']=window.__mk(1,'em_producao'); window.__notify(); location.hash='tv'; });
   await page.waitForSelector('.tv');
   ok('botão avisa que precisa tocar', /Toque para ativar/.test(await page.locator('#tvsnd').getAttribute('aria-label')));

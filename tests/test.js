@@ -52,11 +52,13 @@ const mock = `
   const btn = (n, opt) => page.getByRole('button', { name: n, exact: opt === undefined ? false : opt }).first();
   const store = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__store)));
   const closeFicha = async () => { try { await page.locator('#fch-x').click({ timeout: 1200 }); } catch (e) {} };
-  const login = async n => { await btn('Trocar usuário').click(); await page.locator('.userbtn', { hasText: n }).first().click(); };
+  const PW='teste123';
+  const typePw = async () => { await page.waitForSelector('#askf'); if (await page.locator('#q-b').count()) { await page.fill('#q-a', PW); await page.fill('#q-b', PW); } else { await page.fill('#q-p', PW); } await page.locator('#askf button.primary').click(); };
+  const login = async n => { await btn('Trocar usuário').click(); await page.locator('.userbtn', { hasText: n }).first().click(); await typePw(); await page.waitForSelector('#dlg', { state: 'hidden' }).catch(()=>{}); };
 
   await step('primeiro acesso', async () => {
     await page.waitForSelector('#su-name');
-    await page.fill('#su-name', 'Leandro');
+    await page.fill('#su-name', 'Leandro'); await page.fill('#su-pw', 'teste123'); await page.fill('#su-pw2', 'teste123');
     await btn('Começar').click();
     await page.waitForSelector('text=Gestão da operação');
   });

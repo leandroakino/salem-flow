@@ -55,7 +55,7 @@ const mock = `
 
 
   await page.route('**/_blob/**', r=>r.fulfill({contentType:'image/png',body:fs.readFileSync('/tmp/claude-0/-home-claude/1f9ecbd4-7c06-5327-b215-0c2935f1848a/scratchpad/artifact-files/b1d451e0-8614-451a-acdd-d71f9b5e41a3/0a6e79af65f66e9a4f8f099f12ff4688.png')}));
-  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
+  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
 
   const fsx=require('fs'); const dd='orders-dump2/orders/';
   const docs={}; fsx.readdirSync(dd).forEach(f=>{ const j=JSON.parse(fsx.readFileSync(dd+f)); docs['orders/'+(j.id||f.replace('.json',''))]=j.data||j; });

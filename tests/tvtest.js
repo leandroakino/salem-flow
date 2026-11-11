@@ -55,7 +55,7 @@ const mock = `
 
 
   await page.route('**/_blob/**', r=>r.fulfill({contentType:'image/png',body:fs.readFileSync('/tmp/claude-0/-home-claude/1f9ecbd4-7c06-5327-b215-0c2935f1848a/scratchpad/artifact-files/b1d451e0-8614-451a-acdd-d71f9b5e41a3/0a6e79af65f66e9a4f8f099f12ff4688.png')}));
-  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
+  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
   await page.evaluate(()=>{ window.__store['orders/o1']={id:'o1',num:12,key:'k',status:'em_producao',type:'retirada',date:new Date().toISOString().slice(0,10),time:'22:20',client:{name:'X',phone:'1'},items:[{name:'Item avulso',qty:1,price:1,desc:'x'}],photos:[{id:'0a6e79af65f66e9a4f8f099f12ff4688'}],pay:{method:'pix',status:'pago'},history:[],times:{},createdAt:Date.now(),statusAt:Date.now()}; window.__notify(); });
   await page.evaluate(()=>{location.hash='tv'}); await page.waitForSelector('.tv img.ph');
   await page.waitForTimeout(1500);

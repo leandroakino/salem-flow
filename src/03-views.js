@@ -89,7 +89,7 @@ document.addEventListener('focusout',()=>setTimeout(()=>{ if(dirty&&!typing()) r
 function renderHdr(){
   const pendingW=Object.values(pendW).some(Boolean);
   const sy=!navigator.onLine?{c:'bad',t:'Sem internet: alterações ainda não sincronizadas'}:pendingW?{c:'warn',t:'Sincronizando…'}:staleMsg?{c:'warn',t:'Dados podem estar desatualizados'}:{c:'',t:'Sincronizado'};
-  $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i>${sy.t}</span>${me?`<span class="who"><b>${esc(me.name)}</b> · ${ROLES[me.role]}</span><button class="hbtn" data-act="logout">Trocar usuário</button>`:''}</div>`;
+  $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i>${sy.t}</span>${me?`<span class="who"><b>${esc(me.name)}</b> · ${ROLES[me.role]}</span><button class="hbtn" data-act="pw-change">Alterar senha</button><button class="hbtn" data-act="logout">Trocar usuário</button>`:''}</div>`;
 }
 function fitBoards(){ document.querySelectorAll('#view .board').forEach(b=>{ b.style.removeProperty('--bh'); const top=b.getBoundingClientRect().top; const h=Math.max(300,Math.floor(window.innerHeight-top-44)); b.style.setProperty('--bh',h+'px'); }); }
 function boardScroll(){ const b=document.querySelector('#view .board,#view .tvcols'); if(!b) return null; return {x:b.scrollLeft,c:[...b.querySelectorAll('.col .cb,.tvlist')].map(e=>e.scrollTop),y:window.scrollY}; }
@@ -127,12 +127,14 @@ function renderLogin(){
   if(!users.length){
     v.innerHTML=`<div class="center card stack"><h2>Primeiro acesso</h2><p class="muted">Cadastre o administrador da Floricultura Salém. Depois ele cadastra a equipe.</p>
       <label class="fld"><span>Nome do administrador</span><input class="inp" id="su-name" autocomplete="off"></label>
+      <label class="fld"><span>Senha (mínimo 6 caracteres)</span><input class="inp" id="su-pw" type="password" autocomplete="new-password"></label>
+      <label class="fld"><span>Repita a senha</span><input class="inp" id="su-pw2" type="password" autocomplete="new-password"></label>
       <label class="row"><input type="checkbox" id="su-team" checked> Criar usuários de teste (Atendimento 1, Atendimento 2, Produção)</label>
       <label class="row"><input type="checkbox" id="su-demo" checked> Carregar catálogo e estoque de exemplo (apague ou edite depois)</label>
       <button class="btn primary lg" data-act="setup">Começar</button></div>`;
     return;
   }
-  v.innerHTML=`<div class="center stack"><h2>Quem está usando?</h2><p class="muted">Toque no seu nome para entrar.</p>${users.sort((a,b)=>a.name.localeCompare(b.name)).map(u=>`<button class="btn lg userbtn" data-act="login" data-id="${u.id}"><b>${esc(u.name)}</b><span class="chip c-gray">${ROLES[u.role]}</span></button>`).join('')}</div>`;
+  v.innerHTML=`<div class="center stack"><h2>Quem está usando?</h2><p class="muted">Toque no seu nome e digite a sua senha.</p>${users.sort((a,b)=>a.name.localeCompare(b.name)).map(u=>`<button class="btn lg userbtn" data-act="login" data-id="${u.id}"><b>${esc(u.name)}</b><span class="chip c-gray">${ROLES[u.role]}</span></button>`).join('')}</div>`;
 }
 
 /* ---------- pendências + mural ---------- */
@@ -355,7 +357,7 @@ function viewCad(){
   const tabs=`<div class="pillbtns" style="margin:8px 0 14px"><button class="btn ${CT==='produtos'?'primary':''}" data-act="cad-tab" data-v="produtos">Produtos e fichas técnicas</button><button class="btn ${CT==='usuarios'?'primary':''}" data-act="cad-tab" data-v="usuarios">Usuários</button></div>`;
   if(CT==='usuarios'){
     const U=arr('users').sort((a,b)=>a.name.localeCompare(b.name));
-    return `<div class="row between"><h2>Usuários</h2><button class="btn primary" data-act="u-new">Novo usuário</button></div>${tabs}<div class="tablewrap"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${U.map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${ROLES[u.role]}</td><td>${u.active===false?'<span class="chip c-gray">Inativo</span>':'<span class="chip c-green">Ativo</span>'}</td><td><button class="btn sm" data-act="u-edit" data-id="${u.id}">Editar</button></td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="row between"><h2>Usuários</h2><button class="btn primary" data-act="u-new">Novo usuário</button></div>${tabs}<div class="tablewrap"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${U.map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${ROLES[u.role]}</td><td>${u.active===false?'<span class="chip c-gray">Inativo</span>':'<span class="chip c-green">Ativo</span>'}</td><td><button class="btn sm" data-act="u-edit" data-id="${u.id}">Editar</button> <button class="btn sm" data-act="u-pw" data-id="${u.id}">${u.pw?'Redefinir senha':'Sem senha'}</button></td></tr>`).join('')}</tbody></table></div>`;
   }
   const P=arr('products').sort((a,b)=>a.name.localeCompare(b.name));
   return `<div class="row between"><h2>Produtos e fichas técnicas</h2><button class="btn primary" data-act="pr-new">Novo produto</button></div>${tabs}<div class="tablewrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th class="n">Preço</th><th>Ficha técnica</th><th>Ação</th></tr></thead><tbody>${P.map(p=>`<tr><td><b>${esc(p.name)}</b>${p.custom?'<div class="small muted">Exige descrição (personalizado)</div>':''}${p.direct?'<div class="small muted">Direto da loja, sem produção</div>':''}${p.active===false?' <span class="chip c-gray">Inativo</span>':''}</td><td>${esc(p.category)}</td><td class="n">${money(p.price)}</td><td class="small">${(p.recipe||[]).map(r=>`${num(r.qty)} ${esc((S.stock[r.sid]||{}).unit||'')} ${esc((S.stock[r.sid]||{}).name||'?')}`).join(', ')||'<span class="muted">Sem ficha: baixa manual</span>'}</td><td><button class="btn sm" data-act="pr-edit" data-id="${p.id}">Editar</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nenhum produto cadastrado.</td></tr>'}</tbody></table></div>`;

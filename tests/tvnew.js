@@ -54,7 +54,7 @@ const mock = `
         window.__store['users/u1']={id:'u1',name:'Leo',role:'admin',active:true}; window.__notify(); }; });
     await page.route('http://salem.test/', r=>r.fulfill({contentType:'text/html',body:wrapped}));
     await page.goto('http://salem.test/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
+    await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
     await page.evaluate(()=>window.__seed()); await page.evaluate(()=>{location.hash='tv'}); 
     await page.evaluate(()=>{ const e=[...document.querySelectorAll('[data-act="nav"][data-v="tv"]')][0]; });
     await page.waitForTimeout(300);

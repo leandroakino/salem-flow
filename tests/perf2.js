@@ -51,7 +51,7 @@ const html=fs.readFileSync('/tmp/cur.html','utf8'); const IMG='/tmp/claude-0/-ho
     await page.addInitScript(()=>{ window.__lt=[]; try{ new PerformanceObserver(l=>l.getEntries().forEach(e=>window.__lt.push(Math.round(e.duration)))).observe({entryTypes:['longtask']}); }catch(e){} });
     await page.route('http://salem.test/', r=>r.fulfill({contentType:'text/html',body:wrapOf(html)}));
     await page.goto('http://salem.test/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
+    await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
     await page.evaluate(()=>{ window.__store['users/u2']={id:'u2',name:'Atendimento 1',role:'atendimento',active:true}; window.__notify(); });
     await page.getByRole('button',{name:'Trocar usuário'}).first().click(); await page.locator('.userbtn',{hasText:'Atendimento 1'}).first().click();
     await page.getByRole('button',{name:'+ Novo pedido'}).first().click(); await page.waitForSelector('#fo-photo');

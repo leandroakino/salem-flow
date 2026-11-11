@@ -267,6 +267,29 @@ const R=()=>me&&me.role, isAdm=()=>R()==='admin', canAtt=()=>R()==='atendimento'
 const Q={};
 const seq=(key,fn)=>{const p=(Q[key]||Promise.resolve()).catch(()=>{}).then(fn);Q[key]=p;return p;};
 const put=(c,i,d)=>seq(c+'/'+i,()=>db.doc(c+'/'+i).set(d));
+/* ---------- senhas (SHA-256 salgado e repetido; funciona em qualquer navegador) ---------- */
+const SHA_K=[],SHA_H=[]; (()=>{ const pr=[]; for(let n=2;pr.length<64;n++){ if(pr.every(p=>n%p)) pr.push(n); } pr.forEach((p,i)=>{ SHA_K[i]=Math.floor((Math.cbrt(p)%1)*4294967296)>>>0; if(i<8) SHA_H[i]=Math.floor((Math.sqrt(p)%1)*4294967296)>>>0; }); })();
+function sha256(m){
+  const l=m.length, n=(((l+9+63)>>6)<<6), b=new Uint8Array(n); b.set(m); b[l]=0x80; const dv=new DataView(b.buffer); dv.setUint32(n-8,Math.floor(l/536870912)); dv.setUint32(n-4,(l<<3)>>>0);
+  const h=SHA_H.slice(), w=new Uint32Array(64), r=(x,k)=>(x>>>k)|(x<<(32-k));
+  for(let o=0;o<n;o+=64){
+    for(let i=0;i<16;i++) w[i]=dv.getUint32(o+i*4);
+    for(let i=16;i<64;i++){ const a=w[i-15], c=w[i-2]; w[i]=(w[i-16]+(r(a,7)^r(a,18)^(a>>>3))+w[i-7]+(r(c,17)^r(c,19)^(c>>>10)))>>>0; }
+    let [a,b2,c2,d,e,f,g,hh]=h;
+    for(let i=0;i<64;i++){ const t1=(hh+(r(e,6)^r(e,11)^r(e,25))+((e&f)^(~e&g))+SHA_K[i]+w[i])>>>0, t2=((r(a,2)^r(a,13)^r(a,22))+((a&b2)^(a&c2)^(b2&c2)))>>>0; hh=g; g=f; f=e; e=(d+t1)>>>0; d=c2; c2=b2; b2=a; a=(t1+t2)>>>0; }
+    [a,b2,c2,d,e,f,g,hh].forEach((v,i)=>{ h[i]=(h[i]+v)>>>0; });
+  }
+  const out=new Uint8Array(32), ov=new DataView(out.buffer); h.forEach((v,i)=>ov.setUint32(i*4,v)); return out;
+}
+const toHex=u=>Array.from(u).map(x=>x.toString(16).padStart(2,'0')).join('');
+const fromHex=s=>new Uint8Array((s.match(/../g)||[]).map(x=>parseInt(x,16)));
+function cat(...a){ const o=new Uint8Array(a.reduce((s,x)=>s+x.length,0)); let p=0; a.forEach(x=>{ o.set(x,p); p+=x.length; }); return o; }
+async function pwHash(pw,saltHex){
+  const salt=saltHex?fromHex(saltHex):crypto.getRandomValues(new Uint8Array(16)), pb=new TextEncoder().encode(pw);
+  let h=sha256(cat(salt,pb)); for(let i=0;i<20000;i++){ h=sha256(cat(h,salt,pb)); if(i%4000===3999) await new Promise(r=>setTimeout(r)); }
+  return {s:toHex(salt),h:toHex(h),at:Date.now()};
+}
+async function pwCheck(u,pw){ if(!u||!u.pw) return false; const x=await pwHash(pw,u.pw.s); return x.h===u.pw.h; }
 const patch=(c,i,d)=>seq(c+'/'+i,()=>db.doc(c+'/'+i).update(d));
 const del=(c,i)=>seq(c+'/'+i,()=>db.doc(c+'/'+i).delete());
 const logEv=(act,detail,ref)=>put('log',uid(),{at:now(),by:me?me.name:'—',role:me?me.role:'',act,detail:detail||'',ref:ref||''});
@@ -543,7 +566,7 @@ document.addEventListener('focusout',()=>setTimeout(()=>{ if(dirty&&!typing()) r
 function renderHdr(){
   const pendingW=Object.values(pendW).some(Boolean);
   const sy=!navigator.onLine?{c:'bad',t:'Sem internet: alterações ainda não sincronizadas'}:pendingW?{c:'warn',t:'Sincronizando…'}:staleMsg?{c:'warn',t:'Dados podem estar desatualizados'}:{c:'',t:'Sincronizado'};
-  $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i>${sy.t}</span>${me?`<span class="who"><b>${esc(me.name)}</b> · ${ROLES[me.role]}</span><button class="hbtn" data-act="logout">Trocar usuário</button>`:''}</div>`;
+  $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i>${sy.t}</span>${me?`<span class="who"><b>${esc(me.name)}</b> · ${ROLES[me.role]}</span><button class="hbtn" data-act="pw-change">Alterar senha</button><button class="hbtn" data-act="logout">Trocar usuário</button>`:''}</div>`;
 }
 function fitBoards(){ document.querySelectorAll('#view .board').forEach(b=>{ b.style.removeProperty('--bh'); const top=b.getBoundingClientRect().top; const h=Math.max(300,Math.floor(window.innerHeight-top-44)); b.style.setProperty('--bh',h+'px'); }); }
 function boardScroll(){ const b=document.querySelector('#view .board,#view .tvcols'); if(!b) return null; return {x:b.scrollLeft,c:[...b.querySelectorAll('.col .cb,.tvlist')].map(e=>e.scrollTop),y:window.scrollY}; }
@@ -581,12 +604,14 @@ function renderLogin(){
   if(!users.length){
     v.innerHTML=`<div class="center card stack"><h2>Primeiro acesso</h2><p class="muted">Cadastre o administrador da Floricultura Salém. Depois ele cadastra a equipe.</p>
       <label class="fld"><span>Nome do administrador</span><input class="inp" id="su-name" autocomplete="off"></label>
+      <label class="fld"><span>Senha (mínimo 6 caracteres)</span><input class="inp" id="su-pw" type="password" autocomplete="new-password"></label>
+      <label class="fld"><span>Repita a senha</span><input class="inp" id="su-pw2" type="password" autocomplete="new-password"></label>
       <label class="row"><input type="checkbox" id="su-team" checked> Criar usuários de teste (Atendimento 1, Atendimento 2, Produção)</label>
       <label class="row"><input type="checkbox" id="su-demo" checked> Carregar catálogo e estoque de exemplo (apague ou edite depois)</label>
       <button class="btn primary lg" data-act="setup">Começar</button></div>`;
     return;
   }
-  v.innerHTML=`<div class="center stack"><h2>Quem está usando?</h2><p class="muted">Toque no seu nome para entrar.</p>${users.sort((a,b)=>a.name.localeCompare(b.name)).map(u=>`<button class="btn lg userbtn" data-act="login" data-id="${u.id}"><b>${esc(u.name)}</b><span class="chip c-gray">${ROLES[u.role]}</span></button>`).join('')}</div>`;
+  v.innerHTML=`<div class="center stack"><h2>Quem está usando?</h2><p class="muted">Toque no seu nome e digite a sua senha.</p>${users.sort((a,b)=>a.name.localeCompare(b.name)).map(u=>`<button class="btn lg userbtn" data-act="login" data-id="${u.id}"><b>${esc(u.name)}</b><span class="chip c-gray">${ROLES[u.role]}</span></button>`).join('')}</div>`;
 }
 
 /* ---------- pendências + mural ---------- */
@@ -809,7 +834,7 @@ function viewCad(){
   const tabs=`<div class="pillbtns" style="margin:8px 0 14px"><button class="btn ${CT==='produtos'?'primary':''}" data-act="cad-tab" data-v="produtos">Produtos e fichas técnicas</button><button class="btn ${CT==='usuarios'?'primary':''}" data-act="cad-tab" data-v="usuarios">Usuários</button></div>`;
   if(CT==='usuarios'){
     const U=arr('users').sort((a,b)=>a.name.localeCompare(b.name));
-    return `<div class="row between"><h2>Usuários</h2><button class="btn primary" data-act="u-new">Novo usuário</button></div>${tabs}<div class="tablewrap"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${U.map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${ROLES[u.role]}</td><td>${u.active===false?'<span class="chip c-gray">Inativo</span>':'<span class="chip c-green">Ativo</span>'}</td><td><button class="btn sm" data-act="u-edit" data-id="${u.id}">Editar</button></td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="row between"><h2>Usuários</h2><button class="btn primary" data-act="u-new">Novo usuário</button></div>${tabs}<div class="tablewrap"><table><thead><tr><th>Nome</th><th>Perfil</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${U.map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${ROLES[u.role]}</td><td>${u.active===false?'<span class="chip c-gray">Inativo</span>':'<span class="chip c-green">Ativo</span>'}</td><td><button class="btn sm" data-act="u-edit" data-id="${u.id}">Editar</button> <button class="btn sm" data-act="u-pw" data-id="${u.id}">${u.pw?'Redefinir senha':'Sem senha'}</button></td></tr>`).join('')}</tbody></table></div>`;
   }
   const P=arr('products').sort((a,b)=>a.name.localeCompare(b.name));
   return `<div class="row between"><h2>Produtos e fichas técnicas</h2><button class="btn primary" data-act="pr-new">Novo produto</button></div>${tabs}<div class="tablewrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th class="n">Preço</th><th>Ficha técnica</th><th>Ação</th></tr></thead><tbody>${P.map(p=>`<tr><td><b>${esc(p.name)}</b>${p.custom?'<div class="small muted">Exige descrição (personalizado)</div>':''}${p.direct?'<div class="small muted">Direto da loja, sem produção</div>':''}${p.active===false?' <span class="chip c-gray">Inativo</span>':''}</td><td>${esc(p.category)}</td><td class="n">${money(p.price)}</td><td class="small">${(p.recipe||[]).map(r=>`${num(r.qty)} ${esc((S.stock[r.sid]||{}).unit||'')} ${esc((S.stock[r.sid]||{}).name||'?')}`).join(', ')||'<span class="muted">Sem ficha: baixa manual</span>'}</td><td><button class="btn sm" data-act="pr-edit" data-id="${p.id}">Editar</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nenhum produto cadastrado.</td></tr>'}</tbody></table></div>`;
@@ -936,7 +961,7 @@ function fieldHTML(f){
   let ctl;
   if(f.type==='select') ctl=`<select class="sel" id="${id}">${(f.options||[]).map(o=>{const ov=typeof o==='object'?o.v:o, ol=typeof o==='object'?o.l:o; return `<option value="${esc(ov)}" ${String(ov)===String(v)?'selected':''}>${esc(ol)}</option>`;}).join('')}</select>`;
   else if(f.type==='textarea') ctl=`<textarea class="txt" id="${id}">${esc(v)}</textarea>`;
-  else ctl=`<input class="inp" id="${id}" type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" ${f.type==='number'?'step="any" min="0"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''} autocomplete="off">`;
+  else ctl=`<input class="inp" id="${id}" type="${f.type==='number'?'number':f.type==='date'?'date':f.type==='password'?'password':'text'}" ${f.type==='number'?'step="any" min="0"':''} value="${esc(v)}" ${f.ph?`placeholder="${esc(f.ph)}"`:''} autocomplete="off">`;
   return `<label class="fld"><span>${esc(f.label)}${f.required?' *':''}</span>${ctl}</label>`;
 }
 function ask(o){
@@ -948,7 +973,7 @@ function ask(o){
       e.preventDefault(); const v={};
       for(const fl of f){
         if(fl.type==='note') continue; const el=$('#q-'+fl.id);
-        v[fl.id]=fl.type==='checkbox'?el.checked:fl.type==='number'?(el.value===''?0:Number(el.value)):el.value.trim();
+        v[fl.id]=fl.type==='checkbox'?el.checked:fl.type==='number'?(el.value===''?0:Number(el.value)):fl.type==='password'?el.value:el.value.trim();
         if(fl.required&&(fl.type==='number'?!(v[fl.id]>0):!v[fl.id])){ toast('Preencha: '+fl.label,true); el.focus(); return; }
       }
       close(v);
@@ -1163,16 +1188,17 @@ async function loadDemo(){
 }
 async function setup(){
   const name=$('#su-name').value.trim(); if(!name){ toast('Informe o nome do administrador',true); return; }
-  const id='u'+uid(); await put('users',id,{name,role:'admin',active:true});
+  const p1=$('#su-pw').value, p2=$('#su-pw2').value; if(p1.length<6){ toast('A senha precisa ter pelo menos 6 caracteres',true); return; } if(p1!==p2){ toast('As senhas não conferem',true); return; }
+  const id='u'+uid(); await put('users',id,{name,role:'admin',active:true,pw:await pwHash(p1)});
   if($('#su-team').checked) for(const [n,r] of [['Atendimento 1','atendimento'],['Atendimento 2','atendimento'],['Produção','producao']]) await put('users','u'+uid(),{name:n,role:r,active:true});
   if($('#su-demo').checked) await loadDemo();
   doLogin(id);
 }
-function doLogin(id){ const u=S.users[id]; if(!u) return; me={id:u.id,name:u.name,role:u.role}; lsSet('salem.me',id); initView(); render(); }
+function doLogin(id){ const u=S.users[id]; if(!u) return; me={id:u.id,name:u.name,role:u.role}; lsSet('salem.me',id); lsSet('salem.meAt',String(Date.now())); initView(); render(); }
 function initView(){ const h=(location.hash||'').replace('#',''); const allowed=NAV[R()].concat(['tv']); view=allowed.includes(h)?h:({admin:'dash',atendimento:'pedidos',producao:'fila',entregador:'minhas'})[R()]; }
 function autoLogin(){
   if(me){ const u=S.users[me.id]; me=(u&&u.active!==false)?{id:u.id,name:u.name,role:u.role}:null; return; }
-  const id=lsGet('salem.me'); const u=id&&S.users[id]; if(u&&u.active!==false){ me={id:u.id,name:u.name,role:u.role}; initView(); }
+  const id=lsGet('salem.me'); const u=id&&S.users[id]; const at=Number(lsGet('salem.meAt'))||0; if(u&&u.active!==false&&!(u.role==='admin'&&u.pw&&Date.now()-at>8*3600*1000)){ me={id:u.id,name:u.name,role:u.role}; initView(); setTimeout(enforcePw,300); }
 }
 
 /* ---------- exportação ---------- */
@@ -1208,8 +1234,29 @@ function tvDialog(){
   $('#tv-copy').onclick=async()=>{ try{ await navigator.clipboard.writeText(TV_URL); toast('Link copiado'); }catch(e){ toast('Não consegui copiar. Use o botão "Abrir o painel em uma nova aba".',true); } };
 }
 H.nav=d=>{ if(d.v==='tv'){ tvDialog(); return; } closeLayer('drawer'); setView(d.v); };
-H.logout=()=>{ me=null; lsSet('salem.me',''); ['drawer','form','dlg'].forEach(closeLayer); render(); };
-H.login=d=>doLogin(d.id);
+H.logout=()=>{ me=null; lsSet('salem.me',''); lsSet('salem.meAt',''); ['drawer','form','dlg'].forEach(closeLayer); render(); };
+const pwFail={};
+let pwAsk=false;
+async function createPw(u,note){
+  const v=await ask({title:'Criar senha',ok:'Salvar senha',note,fields:[{id:'a',label:'Nova senha (mínimo 6 caracteres)',type:'password',required:true},{id:'b',label:'Repita a nova senha',type:'password',required:true}]});
+  if(!v) return false;
+  if(v.a.length<6) throw new Error('A senha precisa ter pelo menos 6 caracteres');
+  if(v.a!==v.b) throw new Error('As senhas não conferem');
+  await patch('users',u.id,{pw:await pwHash(v.a)}); await logEv('Senha definida',u.name); toast('Senha salva'); return true;
+}
+async function askPw(u){
+  const f=pwFail[u.id]||{n:0,until:0}; const wait=Math.ceil((f.until-now())/1000);
+  if(wait>0) throw new Error('Muitas tentativas erradas. Aguarde '+wait+' segundos.');
+  const v=await ask({title:'Senha de '+u.name,ok:'Entrar',fields:[{id:'p',label:'Senha',type:'password',required:true}]});
+  if(!v) return false;
+  if(await pwCheck(u,v.p)){ pwFail[u.id]={n:0,until:0}; return true; }
+  f.n++; if(f.n>=5){ f.n=0; f.until=now()+60000; } pwFail[u.id]=f; await logEv('Senha errada',u.name);
+  throw new Error('Senha incorreta');
+}
+H.login=async d=>{ const u=S.users[d.id]; if(!u) return; const ok=u.pw?await askPw(u):await createPw(u,'Este é o seu primeiro acesso com senha. Crie a sua para entrar. Ela será pedida nos próximos acessos.'); if(!ok) return; doLogin(u.id); await logEv('Login',u.name); };
+H['pw-change']=async()=>{ const u=S.users[me.id]; if(u.pw){ const ok=await askPw(u); if(!ok) return; } await createPw(u,'Escolha a nova senha.'); };
+H['u-pw']=async d=>{ const u=S.users[d.id]; if(!(await confirmDlg('Redefinir a senha de '+u.name+'?','A senha atual deixa de valer. No próximo acesso, '+u.name+' cria uma nova.'))) return; await patch('users',u.id,{pw:null}); await logEv('Senha redefinida',u.name); toast('Senha redefinida'); };
+async function enforcePw(){ if(!me||pwAsk) return; const u=S.users[me.id]; if(!u||u.pw) return; pwAsk=true; try{ const ok=await createPw(u,'Para continuar, crie uma senha. Ela será pedida nos próximos acessos.'); if(!ok) H.logout(); }catch(e){ toast(e.message||'Erro',true); H.logout(); } finally{ pwAsk=false; } }
 H.setup=()=>setup();
 H['close-drawer']=()=>closeLayer('drawer');
 H['f-close']=()=>{ closeLayer('form'); FM=null; };

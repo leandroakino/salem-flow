@@ -47,9 +47,9 @@ const mock = `
   await page.route('http://salem.test/', r=>r.fulfill({contentType:'text/html',body:wrapped}));
   await page.goto('http://salem.test/',{waitUntil:'domcontentloaded'});
   const ok=(n,c)=>console.log(c?'OK  ':'FAIL',n);
-  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
+  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
   await page.evaluate(()=>{ window.__store['users/u2']={id:'u2',name:'Atendimento 1',role:'atendimento',active:true}; window.__notify(); });
-  await page.getByRole('button',{name:'Trocar usuário'}).first().click(); await page.locator('.userbtn',{hasText:'Atendimento 1'}).first().click();
+  await page.getByRole('button',{name:'Trocar usuário'}).first().click(); await page.locator('.userbtn',{hasText:'Atendimento 1'}).first().click(); await page.waitForSelector('#q-b'); await page.fill('#q-a','teste123'); await page.fill('#q-b','teste123'); await page.locator('#askf button.primary').click();
   await page.getByRole('button',{name:'+ Novo pedido'}).first().click(); await page.waitForSelector('#fo-photo');
   const buf = await page.evaluate(async()=>{ const c=document.createElement('canvas'); c.width=4000; c.height=3000; const x=c.getContext('2d'); const g=x.createLinearGradient(0,0,4000,3000); g.addColorStop(0,'#c33'); g.addColorStop(1,'#36c'); x.fillStyle=g; x.fillRect(0,0,4000,3000); for(let i=0;i<6000;i++){ x.fillStyle='hsl('+(i%360)+',70%,'+(30+(i*7)%40)+'%)'; x.beginPath(); x.arc(Math.random()*4000,Math.random()*3000,5+Math.random()*60,0,7); x.fill(); } const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.95)); const u=new Uint8Array(await b.arrayBuffer()); let s=''; for(let i=0;i<u.length;i+=8192) s+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return btoa(s); });
   const data=Buffer.from(buf,'base64'); ok('imagem de teste grande (>1 MB)', data.length>1024*1024);

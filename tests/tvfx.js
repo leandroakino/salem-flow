@@ -55,7 +55,7 @@ const mock = `
 
 
   await page.route('**/_blob/**', r=>r.fulfill({contentType:'image/png',body:fs.readFileSync('/tmp/claude-0/-home-claude/1f9ecbd4-7c06-5327-b215-0c2935f1848a/scratchpad/artifact-files/b1d451e0-8614-451a-acdd-d71f9b5e41a3/0a6e79af65f66e9a4f8f099f12ff4688.png')}));
-  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
+  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
 
   const mk=(id,n,st)=>page.evaluate(([id,n,st])=>{ window.__store['orders/'+id]={id,num:n,key:id,status:st,type:'retirada',date:new Date().toISOString().slice(0,10),time:'22:20',client:{name:'X',phone:'1'},items:[{name:'Item '+n,qty:1,price:1}],photos:[],pay:{method:'pix',status:'pago'},history:[],times:{},createdAt:Date.now(),statusAt:Date.now()}; window.__notify(); },[id,n,st]);
   await mk('a',1,'liberado');

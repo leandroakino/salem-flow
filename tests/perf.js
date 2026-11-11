@@ -52,7 +52,7 @@ const variants={'v26 (antes)':fs.readFileSync('/tmp/v26.html','utf8'),'atual (v3
       window.__seed=()=>{ for(let k=1;k<=17;k++){ const d=new Date(now+((k*37)%240-60)*60000); window.__store['orders/o'+k]={id:'o'+k,num:100+k,key:'k'+k,status:k<=6?'liberado':k<=12?'em_producao':'pronto_subir',type:k%3?'entrega':'retirada',date:day,time:('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2),client:{name:'Cliente '+k,phone:'1'},items:[{name:'Buquê '+k,qty:1,price:1,desc:'Rosas vermelhas e laço'}],photos:k%2?[{id:'x'}]:[],buildNotes:'',pay:{method:'pix',status:'pago'},history:[{act:'Pedido criado',at:now,by:'A',role:'atendimento'}],times:{},createdAt:now,statusAt:now}; } window.__store['users/u2']={id:'u2',name:'Atendimento 1',role:'atendimento',active:true}; window.__notify(); }; });
     await page.route('http://salem.test/', r=>r.fulfill({contentType:'text/html',body:wrapOf(html)}));
     await page.goto('http://salem.test/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
+    await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
     await page.evaluate(()=>window.__seed());
     const m=async()=>{ const r=(await cdp.send('Performance.getMetrics')).metrics; const g=n=>r.find(x=>x.name===n).value; return {task:g('TaskDuration'),script:g('ScriptDuration')}; };
     const out={};

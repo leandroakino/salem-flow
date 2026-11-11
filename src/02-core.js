@@ -62,6 +62,29 @@ const R=()=>me&&me.role, isAdm=()=>R()==='admin', canAtt=()=>R()==='atendimento'
 const Q={};
 const seq=(key,fn)=>{const p=(Q[key]||Promise.resolve()).catch(()=>{}).then(fn);Q[key]=p;return p;};
 const put=(c,i,d)=>seq(c+'/'+i,()=>db.doc(c+'/'+i).set(d));
+/* ---------- senhas (SHA-256 salgado e repetido; funciona em qualquer navegador) ---------- */
+const SHA_K=[],SHA_H=[]; (()=>{ const pr=[]; for(let n=2;pr.length<64;n++){ if(pr.every(p=>n%p)) pr.push(n); } pr.forEach((p,i)=>{ SHA_K[i]=Math.floor((Math.cbrt(p)%1)*4294967296)>>>0; if(i<8) SHA_H[i]=Math.floor((Math.sqrt(p)%1)*4294967296)>>>0; }); })();
+function sha256(m){
+  const l=m.length, n=(((l+9+63)>>6)<<6), b=new Uint8Array(n); b.set(m); b[l]=0x80; const dv=new DataView(b.buffer); dv.setUint32(n-8,Math.floor(l/536870912)); dv.setUint32(n-4,(l<<3)>>>0);
+  const h=SHA_H.slice(), w=new Uint32Array(64), r=(x,k)=>(x>>>k)|(x<<(32-k));
+  for(let o=0;o<n;o+=64){
+    for(let i=0;i<16;i++) w[i]=dv.getUint32(o+i*4);
+    for(let i=16;i<64;i++){ const a=w[i-15], c=w[i-2]; w[i]=(w[i-16]+(r(a,7)^r(a,18)^(a>>>3))+w[i-7]+(r(c,17)^r(c,19)^(c>>>10)))>>>0; }
+    let [a,b2,c2,d,e,f,g,hh]=h;
+    for(let i=0;i<64;i++){ const t1=(hh+(r(e,6)^r(e,11)^r(e,25))+((e&f)^(~e&g))+SHA_K[i]+w[i])>>>0, t2=((r(a,2)^r(a,13)^r(a,22))+((a&b2)^(a&c2)^(b2&c2)))>>>0; hh=g; g=f; f=e; e=(d+t1)>>>0; d=c2; c2=b2; b2=a; a=(t1+t2)>>>0; }
+    [a,b2,c2,d,e,f,g,hh].forEach((v,i)=>{ h[i]=(h[i]+v)>>>0; });
+  }
+  const out=new Uint8Array(32), ov=new DataView(out.buffer); h.forEach((v,i)=>ov.setUint32(i*4,v)); return out;
+}
+const toHex=u=>Array.from(u).map(x=>x.toString(16).padStart(2,'0')).join('');
+const fromHex=s=>new Uint8Array((s.match(/../g)||[]).map(x=>parseInt(x,16)));
+function cat(...a){ const o=new Uint8Array(a.reduce((s,x)=>s+x.length,0)); let p=0; a.forEach(x=>{ o.set(x,p); p+=x.length; }); return o; }
+async function pwHash(pw,saltHex){
+  const salt=saltHex?fromHex(saltHex):crypto.getRandomValues(new Uint8Array(16)), pb=new TextEncoder().encode(pw);
+  let h=sha256(cat(salt,pb)); for(let i=0;i<20000;i++){ h=sha256(cat(h,salt,pb)); if(i%4000===3999) await new Promise(r=>setTimeout(r)); }
+  return {s:toHex(salt),h:toHex(h),at:Date.now()};
+}
+async function pwCheck(u,pw){ if(!u||!u.pw) return false; const x=await pwHash(pw,u.pw.s); return x.h===u.pw.h; }
 const patch=(c,i,d)=>seq(c+'/'+i,()=>db.doc(c+'/'+i).update(d));
 const del=(c,i)=>seq(c+'/'+i,()=>db.doc(c+'/'+i).delete());
 const logEv=(act,detail,ref)=>put('log',uid(),{at:now(),by:me?me.name:'—',role:me?me.role:'',act,detail:detail||'',ref:ref||''});

@@ -56,7 +56,7 @@ const mock = `
 
 
   await page.route('**/_blob/**', r=>r.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==','base64')}));
-  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
+  await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await btn('Começar').click(); await page.waitForSelector('text=Gestão da operação');
   const fsx=require('fs'); const docs={};
   fsx.readdirSync('seed').forEach(f=>{ const o=JSON.parse(fsx.readFileSync('seed/'+f)); docs['orders/'+o.id]=o; });
   // mais pedidos liberados para estressar
