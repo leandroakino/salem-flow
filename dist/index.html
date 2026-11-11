@@ -149,7 +149,7 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 .tvclock{text-align:right;line-height:1.05;white-space:nowrap}
 .tvclock b{display:block;font-family:var(--ff-display);font-size:2.6em;font-weight:700;font-variant-numeric:tabular-nums}
 .tvclock span{font-size:.9em;color:var(--muted)}
-.tvctl{display:flex;gap:.4em}.tvbtn{font:inherit;font-size:.8em;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:.6em;padding:.35em .8em;cursor:pointer}.tvbtn:hover,.tvbtn:focus-visible{color:var(--ink);border-color:var(--muted)}
+.tvctl{display:flex;gap:.4em}.tvbtn{font:inherit;font-size:.8em;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:.6em;padding:.35em .8em;cursor:pointer}.tvbtn:hover,.tvbtn:focus-visible{color:var(--ink);border-color:var(--muted)}.tvbtn.warn{color:#0B120E;background:var(--s-amber);border-color:var(--s-amber);font-weight:700}
 .tvsync{background:var(--s-red);color:#0B120E;font-weight:700;border-radius:999px;padding:.25em .9em;font-size:.85em;white-space:nowrap}
 .tvcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1em;min-height:0}
 .tvcol{display:flex;flex-direction:column;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:1.1em;overflow:hidden}
@@ -867,7 +867,7 @@ function tvTrack(panels){
   const t=now(), cur={};
   panels.forEach(([,,L],pi)=>L.forEach(o=>{ (cur[o.id]=cur[o.id]||[]).push(pi); }));
   if(tvPrev&&t-tvPrevAt<300000){
-    Object.entries(cur).forEach(([id,ps])=>{ const was=tvPrev[id]; ps.forEach(pi=>{ if(!was||!was.includes(pi)){ const k=tvFx[id+'|'+pi]; if(!k||t-k.at>8000) tvFx[id+'|'+pi]={k:was?'moved':'new',at:t}; } }); });
+    Object.entries(cur).forEach(([id,ps])=>{ const was=tvPrev[id]; ps.forEach(pi=>{ if(!was||!was.includes(pi)){ const k=tvFx[id+'|'+pi]; if(!k||t-k.at>8000){ tvFx[id+'|'+pi]={k:was?'moved':'new',at:t}; if(!was&&pi===0) tvChime(); } } }); });
   }
   Object.keys(tvFx).forEach(k=>{ if(t-tvFx[k].at>9000) delete tvFx[k]; });
   tvPrev=cur; tvPrevAt=t;
@@ -894,14 +894,20 @@ function viewTV(){
   return `<div class="tv"><div class="tvtop"><div class="brand">${LEAF}Produção</div>
     <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
     <div class="tvclock"><b id="tvclock"></b><span id="tvdate"></span></div>
-    ${ctl?`<div class="tvctl"><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button></div>`:''}</div>
+    ${ctl?`<div class="tvctl"><button class="tvbtn" id="tvsnd" data-act="tv-snd"></button><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button></div>`:''}</div>
     <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${L.map(o=>tvCard(o,c,pi)).join('')||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
 }
+let tvCtx=null, tvSnd=(lsGet('salem.tvsound')!=='off');
+function tvAudio(){ try{ if(!tvCtx){ const A=window.AudioContext||window.webkitAudioContext; if(!A) return null; tvCtx=new A(); } if(tvCtx.state==='suspended'&&tvCtx.resume) tvCtx.resume(); return tvCtx; }catch(e){ return null; } }
+const tvAudioOn=()=>!!(tvCtx&&tvCtx.state==='running');
+function tvChime(){ if(!tvSnd||!tvAudioOn()) return; try{ const c=tvCtx, t=c.currentTime; [[880,0],[1175,.17]].forEach(([f,d])=>{ const o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t+d); g.gain.linearRampToValueAtTime(.28,t+d+.02); g.gain.exponentialRampToValueAtTime(.001,t+d+.7); o.connect(g); g.connect(c.destination); o.start(t+d); o.stop(t+d+.75); }); }catch(e){} }
+['pointerdown','keydown','touchstart'].forEach(e=>document.addEventListener(e,ev=>{ if(ev.target&&ev.target.closest&&ev.target.closest('#tvsnd')) return; if(view==='tv'&&tvSnd&&!tvAudioOn()){ tvAudio(); setTimeout(()=>{ try{ tvTick(); }catch(x){} },200); } },{capture:true,passive:true}));
 let tvIdle=Date.now();
 ['pointermove','wheel','touchstart','keydown','pointerdown'].forEach(e=>document.addEventListener(e,()=>{ tvIdle=Date.now(); },{passive:true,capture:true}));
 function tvTick(){
   if(view!=='tv') return;
   const d=new Date(), c=$('#tvclock'); if(!c) return;
+  const sb=$('#tvsnd'); if(sb){ const st=!tvSnd?'off':tvAudioOn()?'on':'lock'; sb.textContent=st==='off'?'Som desligado':st==='on'?'Som ligado':'Toque para ativar o som'; sb.classList.toggle('warn',st==='lock'); }
   c.textContent=p2(d.getHours())+':'+p2(d.getMinutes());
   try{ $('#tvdate').textContent=d.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}).replace(/\./g,''); }catch(e){}
   document.querySelectorAll('.tv .tvi small[data-dl]').forEach(s=>{ const dl=s.dataset.dl; const w=tvWhen(dl===''?null:+dl); s.textContent=w.t; const card=s.closest('.tvi'); card.classList.toggle('late',w.k==='late'); card.classList.toggle('soon',w.k==='soon'); });
@@ -1331,6 +1337,7 @@ H.dp=d=>{ DP=d.v; render(true); };
 H['exp-orders']=()=>{ const t0=periodStart(); return exportCSV('pedidos.csv',[['Nº','Criado em','Cliente','Telefone','Canal','Tipo','Data','Hora','Itens','Produtos','Taxa','Desconto','Total','Pagamento','Situação pgto','Status'],...arr('orders').filter(o=>o.createdAt>=t0).sort((a,b)=>a.num-b.num).map(o=>[o.num,fDT(o.createdAt),o.client.name,o.client.phone,CHANNELS[o.channel],TYPES[o.type],o.date,o.time,itemsText(o),o.sub,o.fee,o.discount,o.total,PAYM[o.pay.method],PAYS[o.pay.status],stLabel(o)])]); };
 H['exp-stock']=()=>exportCSV('estoque.csv',[['Item','Categoria','Código','Unidade','Produção','Reserva','Expositor','Total','Mínimo','Custo','Valor','Fornecedor'],...arr('stock').map(i=>{const q=i.qty||{};return [i.name,i.cat,i.code,i.unit,q.producao||0,q.reserva||0,q.expositor||0,totalQty(i),i.min||0,i.cost||0,round(totalQty(i)*(i.cost||0)),i.supplier];})]);
 H['exp-losses']=()=>exportCSV('perdas.csv',[['Quando','Item','Qtd','Unidade','Local','Motivo','Custo','Quem','Obs.'],...arr('losses').sort((a,b)=>a.at-b.at).map(l=>[fDT(l.at),l.name,l.qty,l.unit,LOC[l.loc],l.motive,l.cost,l.by,l.note])]);
+H['tv-snd']=async()=>{ if(tvSnd&&!tvAudioOn()){ tvAudio(); await new Promise(r=>setTimeout(r,150)); tvChime(); } else { tvSnd=!tvSnd; try{ localStorage.setItem('salem.tvsound',tvSnd?'on':'off'); }catch(e){} if(tvSnd){ tvAudio(); await new Promise(r=>setTimeout(r,150)); tvChime(); } } tvTick(); };
 H['tv-full']=async()=>{ try{ await document.documentElement.requestFullscreen(); }catch(e){ toast('Seu navegador não permitiu tela cheia aqui'); } };
 
 document.addEventListener('click',e=>{

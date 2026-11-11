@@ -415,7 +415,7 @@ function tvTrack(panels){
   const t=now(), cur={};
   panels.forEach(([,,L],pi)=>L.forEach(o=>{ (cur[o.id]=cur[o.id]||[]).push(pi); }));
   if(tvPrev&&t-tvPrevAt<300000){
-    Object.entries(cur).forEach(([id,ps])=>{ const was=tvPrev[id]; ps.forEach(pi=>{ if(!was||!was.includes(pi)){ const k=tvFx[id+'|'+pi]; if(!k||t-k.at>8000) tvFx[id+'|'+pi]={k:was?'moved':'new',at:t}; } }); });
+    Object.entries(cur).forEach(([id,ps])=>{ const was=tvPrev[id]; ps.forEach(pi=>{ if(!was||!was.includes(pi)){ const k=tvFx[id+'|'+pi]; if(!k||t-k.at>8000){ tvFx[id+'|'+pi]={k:was?'moved':'new',at:t}; if(!was&&pi===0) tvChime(); } } }); });
   }
   Object.keys(tvFx).forEach(k=>{ if(t-tvFx[k].at>9000) delete tvFx[k]; });
   tvPrev=cur; tvPrevAt=t;
@@ -442,14 +442,20 @@ function viewTV(){
   return `<div class="tv"><div class="tvtop"><div class="brand">${LEAF}Produção</div>
     <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
     <div class="tvclock"><b id="tvclock"></b><span id="tvdate"></span></div>
-    ${ctl?`<div class="tvctl"><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button></div>`:''}</div>
+    ${ctl?`<div class="tvctl"><button class="tvbtn" id="tvsnd" data-act="tv-snd"></button><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button></div>`:''}</div>
     <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${L.map(o=>tvCard(o,c,pi)).join('')||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
 }
+let tvCtx=null, tvSnd=(lsGet('salem.tvsound')!=='off');
+function tvAudio(){ try{ if(!tvCtx){ const A=window.AudioContext||window.webkitAudioContext; if(!A) return null; tvCtx=new A(); } if(tvCtx.state==='suspended'&&tvCtx.resume) tvCtx.resume(); return tvCtx; }catch(e){ return null; } }
+const tvAudioOn=()=>!!(tvCtx&&tvCtx.state==='running');
+function tvChime(){ if(!tvSnd||!tvAudioOn()) return; try{ const c=tvCtx, t=c.currentTime; [[880,0],[1175,.17]].forEach(([f,d])=>{ const o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t+d); g.gain.linearRampToValueAtTime(.28,t+d+.02); g.gain.exponentialRampToValueAtTime(.001,t+d+.7); o.connect(g); g.connect(c.destination); o.start(t+d); o.stop(t+d+.75); }); }catch(e){} }
+['pointerdown','keydown','touchstart'].forEach(e=>document.addEventListener(e,ev=>{ if(ev.target&&ev.target.closest&&ev.target.closest('#tvsnd')) return; if(view==='tv'&&tvSnd&&!tvAudioOn()){ tvAudio(); setTimeout(()=>{ try{ tvTick(); }catch(x){} },200); } },{capture:true,passive:true}));
 let tvIdle=Date.now();
 ['pointermove','wheel','touchstart','keydown','pointerdown'].forEach(e=>document.addEventListener(e,()=>{ tvIdle=Date.now(); },{passive:true,capture:true}));
 function tvTick(){
   if(view!=='tv') return;
   const d=new Date(), c=$('#tvclock'); if(!c) return;
+  const sb=$('#tvsnd'); if(sb){ const st=!tvSnd?'off':tvAudioOn()?'on':'lock'; sb.textContent=st==='off'?'Som desligado':st==='on'?'Som ligado':'Toque para ativar o som'; sb.classList.toggle('warn',st==='lock'); }
   c.textContent=p2(d.getHours())+':'+p2(d.getMinutes());
   try{ $('#tvdate').textContent=d.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}).replace(/\./g,''); }catch(e){}
   document.querySelectorAll('.tv .tvi small[data-dl]').forEach(s=>{ const dl=s.dataset.dl; const w=tvWhen(dl===''?null:+dl); s.textContent=w.t; const card=s.closest('.tvi'); card.classList.toggle('late',w.k==='late'); card.classList.toggle('soon',w.k==='soon'); });
