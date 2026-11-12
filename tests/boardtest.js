@@ -51,7 +51,7 @@ const mock = `
   const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, '-', e.message.split('\n')[0], (e.stack.match(/test.js:\d+/)||[''])[0]); } };
   const btn = (n, opt) => page.getByRole('button', { name: n, exact: opt === undefined ? false : opt }).first();
   const store = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__store)));
-  const login = async n => { await btn('Trocar usuário').click(); await page.locator('.userbtn', { hasText: n }).first().click(); };
+  const login = async n => { await (async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-out').click(); })(); await page.locator('.userbtn', { hasText: n }).first().click(); };
 
 
 

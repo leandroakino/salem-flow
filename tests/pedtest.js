@@ -51,7 +51,7 @@ const mock = `
   const step = async (name, fn) => { try { await fn(); console.log('OK  ', name); } catch (e) { console.log('FAIL', name, '-', e.message.split('\n')[0], (e.stack.match(/test.js:\d+/)||[''])[0]); } };
   const btn = (n, opt) => page.getByRole('button', { name: n, exact: opt === undefined ? false : opt }).first();
   const store = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__store)));
-  const login = async n => { await btn('Trocar usuário').click(); await page.locator('.userbtn', { hasText: n }).first().click(); };
+  const login = async n => { await (async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-out').click(); })(); await page.locator('.userbtn', { hasText: n }).first().click(); };
 
 
   await page.route('**/_blob/**', r=>r.fulfill({contentType:'image/png',body:fs.readFileSync('/tmp/claude-0/-home-claude/1f9ecbd4-7c06-5327-b215-0c2935f1848a/scratchpad/artifact-files/b1d451e0-8614-451a-acdd-d71f9b5e41a3/0a6e79af65f66e9a4f8f099f12ff4688.png')}));
@@ -61,7 +61,7 @@ const mock = `
   const docs={}; fsx.readdirSync(dd).forEach(f=>{ const j=JSON.parse(fsx.readFileSync(dd+f)); docs['orders/'+(j.id||f.replace('.json',''))]=j.data||j; });
   await page.evaluate(d=>{ Object.assign(window.__store,d); window.__notify(); },docs);
   await page.evaluate(()=>{ window.__store['users/u-at']={id:'u-at',name:'Atendimento',role:'atendimento',active:true}; window.__store['orders/o0012'].status='liberado'; window.__store['orders/o0012'].times={liberadoAt:Date.now()}; window.__notify(); });
-  await page.getByRole('button',{name:'Trocar usuário'}).first().click(); await page.locator('.userbtn',{hasText:'Atendimento'}).first().click();
+  await (async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-out').click(); })(); await page.locator('.userbtn',{hasText:'Atendimento'}).first().click();
   await page.waitForTimeout(500);
   await page.route('**/_blob/**', r=>r.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==','base64')}));
   await page.locator('#pf-status').selectOption('abertos'); await page.locator('#pf-slot').selectOption('noite'); await page.locator('#pf-slot').selectOption('');

@@ -306,6 +306,8 @@ async function askPw(u){
   throw new Error('Senha incorreta');
 }
 H.login=async d=>{ const u=S.users[d.id]; if(!u) return; const ok=u.pw?await askPw(u):await createPw(u,'Este é o seu primeiro acesso com senha. Crie a sua para entrar. Ela será pedida nos próximos acessos.'); if(!ok) return; doLogin(u.id); await logEv('Login',u.name); };
+H['user-menu']=()=>{ openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>${esc(me.name)}</h2><p class="muted">${ROLES[me.role]}</p><div class="stack"><button class="btn lg" id="um-pw">Alterar senha</button><button class="btn lg" id="um-out">Trocar usuário</button><button class="btn" id="um-x">Fechar</button></div></div>`);
+  $('#um-x').onclick=()=>closeLayer('dlg'); $('#um-out').onclick=()=>{ closeLayer('dlg'); H.logout(); }; $('#um-pw').onclick=()=>{ closeLayer('dlg'); run(()=>H['pw-change']()); }; };
 H['pw-change']=async()=>{ const u=S.users[me.id]; if(u.pw){ const ok=await askPw(u); if(!ok) return; } await createPw(u,'Escolha a nova senha.'); };
 H['u-pw']=async d=>{ const u=S.users[d.id]; if(!(await confirmDlg('Redefinir a senha de '+u.name+'?','A senha atual deixa de valer. No próximo acesso, '+u.name+' cria uma nova.'))) return; await patch('users',u.id,{pw:null}); await logEv('Senha redefinida',u.name); toast('Senha redefinida'); };
 async function enforcePw(){ if(!me||pwAsk) return; const u=S.users[me.id]; if(!u||u.pw) return; pwAsk=true; try{ const ok=await createPw(u,'Para continuar, crie uma senha. Ela será pedida nos próximos acessos.'); if(!ok) H.logout(); }catch(e){ toast(e.message||'Erro',true); H.logout(); } finally{ pwAsk=false; } }
@@ -333,11 +335,21 @@ function slipHTML(o){
 }
 const SLIP_CSS=`@page{size:80mm auto;margin:0}*{box-sizing:border-box}body{margin:0;background:#fff;color:#000}.slip{width:72mm;margin:0 auto;padding:3mm 2mm;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.3}.s-h{text-align:center;font-weight:700}.s-n{text-align:center;font-weight:700;font-size:40px;line-height:1.1;margin:4px 0}.s-b{text-align:center;font-weight:700;border:2px solid #000;margin:6px 0;padding:2px}.s-l{font-weight:700;font-size:13px;margin-top:8px;border-top:1px solid #000;padding-top:3px}.s-v{margin-bottom:2px}.s-big{font-weight:700;font-size:16px}hr{border:0;border-top:1px dashed #000;margin:7px 0}svg{display:block;margin:0 auto;max-width:100%}.s-i{margin-bottom:5px;font-weight:700}.s-i span{font-weight:400}.s-f{text-align:center;margin-top:6px}.small{font-size:10px}`;
 const slipDoc=o=>`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ficha ${orderNum(o)}</title><style>${SLIP_CSS}</style></head><body>${$('#slip').outerHTML}<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`;
+async function downloadFicha(o){ if(!dl){ toast('Download indisponível nesta visualização',true); return false; } try{ await dl.save({filename:'ficha-'+String(o.num).padStart(4,'0')+'.html',data:slipDoc(o)}); return true; }catch(e){ if(!e||e.code!=='declined') toast('Não consegui baixar a ficha',true); return false; } }
+let fbT=null;
+function fichaBar(o){
+  clearTimeout(fbT); let el=$('#fchbar'); if(!el){ el=document.createElement('div'); el.id='fchbar'; document.body.appendChild(el); }
+  el.innerHTML=`<span><b>Ficha ${orderNum(o)}</b> pronta. Cole no produto.</span><button class="btn primary sm" id="fb-p">Baixar para imprimir</button><button class="btn sm" id="fb-v">Ver ficha</button><button class="btn sm ghost" id="fb-x" aria-label="Dispensar">✕</button>`; el.hidden=false;
+  const hide=()=>{ el.hidden=true; clearTimeout(fbT); };
+  $('#fb-x').onclick=hide; $('#fb-v').onclick=()=>{ hide(); openFicha(o); };
+  $('#fb-p').onclick=async()=>{ if(await downloadFicha(o)) hide(); };
+  fbT=setTimeout(hide,30000);
+}
 function openFicha(o,note){
   openLayer('dlg',`<div class="sheet small"><h2>Ficha ${orderNum(o)}</h2><p class="muted small">${note||'Ficha com todas as informações do pedido, sem valores. Papel de 80 mm.'}</p>${slipHTML(o)}<div class="row end" style="flex-wrap:wrap"><button class="btn" id="fch-c">Copiar texto</button><button class="btn primary" id="fch-d">Baixar para imprimir</button><button class="btn" id="fch-x">Fechar</button></div><p class="muted small">Baixar para imprimir: abra o arquivo baixado e o navegador já abre a impressão em 80 mm. A impressão automática, sem clicar, entra na versão definitiva.</p></div>`);
   try{ if(window.JsBarcode) window.JsBarcode('#slip-bc',String(o.num).padStart(4,'0'),{format:'CODE128',width:2,height:44,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'}); }catch(e){}
   $('#fch-x').onclick=()=>closeLayer('dlg');
-  $('#fch-d').onclick=async()=>{ if(!dl){ toast('Download indisponível nesta visualização',true); return; } try{ await dl.save({filename:'ficha-'+String(o.num).padStart(4,'0')+'.html',data:slipDoc(o)}); }catch(e){ if(!e||e.code!=='declined') toast('Não consegui baixar a ficha',true); } };
+  $('#fch-d').onclick=()=>downloadFicha(o);
   $('#fch-c').onclick=async()=>{ try{ await navigator.clipboard.writeText(fichaText(o)); toast('Ficha copiada'); }catch(e){ const r=document.createRange(); r.selectNodeContents($('#slip')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selecionei o texto. Use copiar do seu aparelho.'); } };
 }
 async function waitOrder(id){ for(let k=0;k<40&&!S.orders[id];k++) await new Promise(r=>setTimeout(r,50)); return S.orders[id]; }
@@ -358,7 +370,7 @@ H['o-direct']=async d=>{ const o=ordr(d);
   await oact(cur,{status:'recebido',skipProd:true,receivedBy:me.name,times:{recebidoAt:now()},...(plan.length?{directUsed:[...(cur.directUsed||[]),...plan]}:{})},'Sem produção','Produto do atendimento'+(plan.length?'. Baixa de '+S.stock[v.sid].name:''));
   await applyDirect(o.id,plan,o); toast(orderNum(o)+' enviado direto para retirada/entrega'); };
 H['p-accept']=d=>oact(ordr(d),{status:'aguardando_prod',responsible:me.name,times:{aceitoAt:now()}},'Aceito na fila de produção');
-H['p-start']=async d=>{ const o=ordr(d), resume=o.status==='aguardando_material'; const pt={status:'em_producao',responsible:o.responsible||me.name,block:null,times:{}}; if(!(o.times&&o.times.inicioAt)) pt.times.inicioAt=now(); if(!(o.times&&o.times.aceitoAt)) pt.times.aceitoAt=now(); await oact(o,pt,resume?'Produção retomada':'Produção iniciada'); if(!resume){ const n=await waitOrder(o.id); if(n) openFicha(n,'Produção iniciada. Imprima a ficha e cole no produto. Lá em cima, o número da ficha tem que bater com o pedido que subiu.'); } };
+H['p-start']=async d=>{ const o=ordr(d), resume=o.status==='aguardando_material'; const pt={status:'em_producao',responsible:o.responsible||me.name,block:null,times:{}}; if(!(o.times&&o.times.inicioAt)) pt.times.inicioAt=now(); if(!(o.times&&o.times.aceitoAt)) pt.times.aceitoAt=now(); await oact(o,pt,resume?'Produção retomada':'Produção iniciada'); if(!resume){ const n=await waitOrder(o.id); if(n) fichaBar(n); } };
 H['p-resume']=d=>oact(ordr(d),{status:'em_producao',block:null,waitReason:null},'Produção retomada');
 async function newMatReq(orderId){
   const o=orderId&&S.orders[orderId];

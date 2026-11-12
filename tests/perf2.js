@@ -53,7 +53,7 @@ const html=fs.readFileSync('/tmp/cur.html','utf8'); const IMG='/tmp/claude-0/-ho
     await page.goto('http://salem.test/',{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#su-name'); await page.fill('#su-name','L'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
     await page.evaluate(()=>{ window.__store['users/u2']={id:'u2',name:'Atendimento 1',role:'atendimento',active:true}; window.__notify(); });
-    await page.getByRole('button',{name:'Trocar usuário'}).first().click(); await page.locator('.userbtn',{hasText:'Atendimento 1'}).first().click();
+    await (async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-out').click(); })(); await page.locator('.userbtn',{hasText:'Atendimento 1'}).first().click();
     await page.getByRole('button',{name:'+ Novo pedido'}).first().click(); await page.waitForSelector('#fo-photo');
     await page.evaluate(()=>{ window.__lt=[]; window.__t0=performance.now(); });
     await page.setInputFiles('#fo-photo',IMG);

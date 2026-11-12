@@ -52,7 +52,7 @@ const mock = `
   const dlgOpen=async()=>(await page.locator('#askf').count())>0;
   const submit=()=>page.locator('#askf button.primary').click();
   const user=n=>page.locator('.userbtn',{hasText:n}).first();
-  const logout=async()=>{ await page.getByRole('button',{name:'Trocar usuário'}).first().click(); };
+  const logout=async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-out').click(); };
   // primeiro acesso exige senha
   await page.waitForSelector('#su-name'); await page.fill('#su-name','Leo');
   await page.fill('#su-pw','123'); await page.fill('#su-pw2','123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForTimeout(300);
@@ -85,7 +85,7 @@ const mock = `
   // perfil do atendimento não vê o cadastro de usuários
   ok('atendimento não tem aba de usuários', (await page.locator('.tab',{hasText:'Cadastros'}).count())===0);
   // alterar senha
-  await page.getByRole('button',{name:'Alterar senha'}).click(); await page.fill('#q-p','atend123'); await submit();
+  await (async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-pw').click(); })(); await page.fill('#q-p','atend123'); await submit();
   await page.waitForSelector('#q-b'); await page.fill('#q-a','nova456'); await page.fill('#q-b','nova456'); await submit(); await page.waitForTimeout(400);
   await logout(); await user('Atendimento 1').click(); await page.fill('#q-p','atend123'); await submit(); await page.waitForTimeout(300);
   ok('senha antiga não vale mais', (await page.locator('text=Quem está usando').count())===1);

@@ -54,7 +54,7 @@ const mock = `
   const closeFicha = async () => { try { await page.locator('#fch-x').click({ timeout: 1200 }); } catch (e) {} };
   const PW='teste123';
   const typePw = async () => { await page.waitForSelector('#askf'); if (await page.locator('#q-b').count()) { await page.fill('#q-a', PW); await page.fill('#q-b', PW); } else { await page.fill('#q-p', PW); } await page.locator('#askf button.primary').click(); };
-  const login = async n => { await btn('Trocar usuário').click(); await page.locator('.userbtn', { hasText: n }).first().click(); await typePw(); await page.waitForSelector('#dlg', { state: 'hidden' }).catch(()=>{}); };
+  const login = async n => { await (async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-out').click(); })(); await page.locator('.userbtn', { hasText: n }).first().click(); await typePw(); await page.waitForSelector('#dlg', { state: 'hidden' }).catch(()=>{}); };
 
   await step('primeiro acesso', async () => {
     await page.waitForSelector('#su-name');
@@ -89,7 +89,7 @@ const mock = `
   await step('produção inicia e vai direto para pronto para subir', async () => {
     await login('Produção'); await page.waitForSelector('text=Fila de produção');
     await btn('Iniciar produção').click();
-    await page.waitForSelector('#slip'); if(!/cole no produto/.test(await page.locator('#dlg').innerText())) throw new Error('ficha da produção não abriu'); await closeFicha();
+    await page.waitForSelector('#fchbar:not([hidden])'); if(!/Cole no produto/.test(await page.locator('#fchbar').innerText())) throw new Error('aviso da ficha da produção não abriu'); if(await page.locator('#dlg .sheet').count()) throw new Error('a ficha não pode bloquear a tela');
     await page.waitForFunction(() => document.body.innerText.includes('Em produção'));
     await btn('Pronto para subir').click(); await page.waitForSelector('#cm-ok');
     await page.locator('#cm-go').click(); await page.waitForTimeout(300);
@@ -153,7 +153,7 @@ const mock = `
     await page.waitForFunction(() => !document.querySelector('#f-release').disabled);
     await page.locator('#f-release').click(); await closeFicha();
     await page.waitForFunction(() => window.__store['orders/o0002']);
-    await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click(); await btn('Iniciar produção').click(); await page.waitForSelector('#slip'); await closeFicha();
+    await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click(); await btn('Iniciar produção').click(); await page.waitForSelector('#fchbar:not([hidden])');
     await page.waitForFunction(() => window.__store['orders/o0002'].status === 'em_producao');
     await btn('Pronto para subir').click(); await page.waitForSelector('#cm-ok'); await page.locator('#cm-ok').check(); await page.locator('#cm-go').click();
     await page.waitForFunction(() => window.__store['orders/o0002'].status === 'pronto_subir');

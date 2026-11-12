@@ -89,7 +89,7 @@ document.addEventListener('focusout',()=>setTimeout(()=>{ if(dirty&&!typing()) r
 function renderHdr(){
   const pendingW=Object.values(pendW).some(Boolean);
   const sy=!navigator.onLine?{c:'bad',t:'Sem internet: alterações ainda não sincronizadas'}:pendingW?{c:'warn',t:'Sincronizando…'}:staleMsg?{c:'warn',t:'Dados podem estar desatualizados'}:{c:'',t:'Sincronizado'};
-  $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i>${sy.t}</span>${me?`<span class="who"><b>${esc(me.name)}</b> · ${ROLES[me.role]}</span><button class="hbtn" data-act="pw-change">Alterar senha</button><button class="hbtn" data-act="logout">Trocar usuário</button>`:''}</div>`;
+  $('#hdr').innerHTML=`<div class="wrap"><div class="brand">${LEAF}Salém Flow</div><span class="sp"></span><span class="sync" role="status"><i class="dot ${sy.c}"></i><span class="st">${sy.t}</span></span>${me?`<button class="hbtn whobtn" data-act="user-menu" aria-haspopup="dialog"><b>${esc(me.name)}</b><span class="rl"> · ${ROLES[me.role]}</span> ▾</button>`:''}</div>`;
 }
 function fitBoards(){ document.querySelectorAll('#view .board').forEach(b=>{ b.style.removeProperty('--bh'); const top=b.getBoundingClientRect().top; const h=Math.max(300,Math.floor(window.innerHeight-top-44)); b.style.setProperty('--bh',h+'px'); }); }
 function boardScroll(){ const b=document.querySelector('#view .board,#view .tvcols'); if(!b) return null; return {x:b.scrollLeft,c:[...b.querySelectorAll('.col .cb,.tvlist')].map(e=>e.scrollTop),y:window.scrollY}; }

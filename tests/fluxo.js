@@ -49,7 +49,7 @@ const mock = `
     await page.waitForSelector('#su-name'); await page.fill('#su-name','Leo'); await page.fill('#su-pw','teste123'); await page.fill('#su-pw2','teste123'); await page.getByRole('button',{name:'Começar'}).click(); await page.waitForSelector('text=Gestão da operação');
     const now=Date.now(), day=new Date().toISOString().slice(0,10);
     await page.evaluate(([now,day])=>{ for(let k=1;k<=9;k++){ const st=k<=3?'liberado':k<=6?'em_producao':'pronto_subir'; const d=new Date(now+k*30*60000); window.__store['orders/o'+k]={id:'o'+k,num:100+k,key:'k'+k,status:st,type:'entrega',date:day,time:('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2),client:{name:'C'+k,phone:'1'},items:[{name:'Buquê '+k,qty:1,price:1,desc:'Rosas vermelhas e laço'}],photos:[],buildNotes:'',pay:{method:'pix',status:'pago'},history:[],times:{},createdAt:now,statusAt:now}; } window.__notify(); },[now,day]);
-    await page.getByRole('button',{name:'Trocar usuário'}).first().click(); await page.locator('.userbtn',{hasText:'Produção'}).first().click(); await page.waitForSelector('#q-b'); await page.fill('#q-a','teste123'); await page.fill('#q-b','teste123'); await page.locator('#askf button.primary').click();
+    await (async()=>{ await page.locator('[data-act="user-menu"]').click(); await page.locator('#um-out').click(); })(); await page.locator('.userbtn',{hasText:'Produção'}).first().click(); await page.waitForSelector('#q-b'); await page.fill('#q-a','teste123'); await page.fill('#q-b','teste123'); await page.locator('#askf button.primary').click();
     await page.waitForSelector('.board'); await page.waitForTimeout(500);
     let taps=0; const tap=async(loc,label)=>{ taps++; await loc.click(); };
     // visibilidade sem rolar
@@ -61,9 +61,7 @@ const mock = `
     await page.screenshot({path:`fila-${w}.png`});
     const t0=Date.now();
     await tap(firstStart);
-    await page.waitForSelector('#slip'); const fichaT=await page.locator('#dlg').innerText();
-    const closeBtns=await page.locator('#dlg button').allInnerTexts();
-    await tap(page.locator('#fch-x'));
+    await page.waitForSelector('#fchbar:not([hidden])'); await page.waitForTimeout(300); await page.screenshot({path:`fila-bar-${w}.png`}); const closeBtns=await page.locator('#fchbar button').allInnerTexts();
     await page.waitForTimeout(400);
     const doneBtn=page.getByRole('button',{name:'Pronto para subir'}).first();
     const doneVisible=await vis(doneBtn);
