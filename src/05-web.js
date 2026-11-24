@@ -46,7 +46,7 @@ function tvFeedStart(t){
 function renderLogin(){
   const v=$('#view');
   if(!webSession){
-    v.innerHTML=`<div class="center card stack"><h2>Entrar no Salém Flow</h2>
+    v.innerHTML=`<div class="center card stack"><h2>Entrar no Salém Flow</h2><p class="muted small">v${APP_VERSION}</p>
       <label class="fld"><span>Usuário ou e-mail</span><input class="inp" id="w-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
       <label class="fld"><span>Senha</span><input class="inp" id="w-pw" type="password" autocomplete="current-password"></label>
       <button class="btn primary lg" data-act="w-login">Entrar</button>

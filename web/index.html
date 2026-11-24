@@ -277,6 +277,7 @@ window.SALEM_WEB={sb,db,assets,dl,photoURL,url:SUPABASE_URL,key:SUPABASE_KEY,cre
 <script>
 (async function(){
 'use strict';
+const APP_VERSION='1.3';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -1329,7 +1330,7 @@ async function askPw(u){
   throw new Error('Senha incorreta');
 }
 H.login=async d=>{ const u=S.users[d.id]; if(!u) return; const ok=u.pw?await askPw(u):await createPw(u,'Este é o seu primeiro acesso com senha. Crie a sua para entrar. Ela será pedida nos próximos acessos.'); if(!ok) return; doLogin(u.id); await logEv('Login',u.name); };
-H['user-menu']=()=>{ openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>${esc(me.name)}</h2><p class="muted">${ROLES[me.role]}</p><div class="stack"><button class="btn lg" id="um-pw">Alterar senha</button><button class="btn lg" id="um-out">Trocar usuário</button><button class="btn" id="um-x">Fechar</button></div></div>`);
+H['user-menu']=()=>{ openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>${esc(me.name)}</h2><p class="muted">${ROLES[me.role]}</p><p class="muted small">Salém Flow v${APP_VERSION}</p><div class="stack"><button class="btn lg" id="um-pw">Alterar senha</button><button class="btn lg" id="um-out">Trocar usuário</button><button class="btn" id="um-x">Fechar</button></div></div>`);
   $('#um-x').onclick=()=>closeLayer('dlg'); $('#um-out').onclick=()=>{ closeLayer('dlg'); H.logout(); }; $('#um-pw').onclick=()=>{ closeLayer('dlg'); run(()=>H['pw-change']()); }; };
 H['pw-change']=async()=>{ const u=S.users[me.id]; if(u.pw){ const ok=await askPw(u); if(!ok) return; } await createPw(u,'Escolha a nova senha.'); };
 H['u-pw']=async d=>{ const u=S.users[d.id]; if(!(await confirmDlg('Redefinir a senha de '+u.name+'?','A senha atual deixa de valer. No próximo acesso, '+u.name+' cria uma nova.'))) return; await patch('users',u.id,{pw:null}); await logEv('Senha redefinida',u.name); toast('Senha redefinida'); };
@@ -1591,7 +1592,7 @@ function tvFeedStart(t){
 function renderLogin(){
   const v=$('#view');
   if(!webSession){
-    v.innerHTML=`<div class="center card stack"><h2>Entrar no Salém Flow</h2>
+    v.innerHTML=`<div class="center card stack"><h2>Entrar no Salém Flow</h2><p class="muted small">v${APP_VERSION}</p>
       <label class="fld"><span>Usuário ou e-mail</span><input class="inp" id="w-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
       <label class="fld"><span>Senha</span><input class="inp" id="w-pw" type="password" autocomplete="current-password"></label>
       <button class="btn primary lg" data-act="w-login">Entrar</button>
