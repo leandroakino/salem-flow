@@ -1547,8 +1547,10 @@ setInterval(sched,30000);
 const W=window.SALEM_WEB, sb=W&&W.sb;
 let webSession=null, webSubscribed=false, webBusy=false;
 TV_URL=location.origin+location.pathname+'#tv';
-const authMsg=e=>{ const m=(e&&e.message)||''; return /invalid login|invalid credentials/i.test(m)?'E-mail ou senha incorretos':/already registered|already been registered/i.test(m)?'Já existe um acesso com este e-mail':/password should be|at least 6/i.test(m)?'A senha precisa ter pelo menos 6 caracteres':/rate limit|too many/i.test(m)?'Muitas tentativas. Aguarde um pouco e tente de novo':/valid email|invalid email/i.test(m)?'E-mail inválido':/email not confirmed/i.test(m)?'E-mail ainda não confirmado. Peça ao administrador para desligar a confirmação por e-mail.':m||'Erro de acesso'; };
+const authMsg=e=>{ const m=(e&&e.message)||''; return /invalid login|invalid credentials/i.test(m)?'Usuário ou senha incorretos':/already registered|already been registered/i.test(m)?'Já existe um acesso com este e-mail':/password should be|at least 6/i.test(m)?'A senha precisa ter pelo menos 6 caracteres':/rate limit|too many/i.test(m)?'Muitas tentativas. Aguarde um pouco e tente de novo':/valid email|invalid email/i.test(m)?'E-mail inválido':/email not confirmed/i.test(m)?'E-mail ainda não confirmado. Peça ao administrador para desligar a confirmação por e-mail.':m||'Erro de acesso'; };
 const fail=e=>{ throw new Error(authMsg(e)); };
+const LOGIN_DOM='@login.floriculturasalem.com.br';
+const loginEmail=v=>{ v=String(v||'').trim(); return v.includes('@')?v:v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9._-]/g,'')+LOGIN_DOM; };
 
 async function webBoot(){
   if(!W||W.failed){ $('#view').innerHTML='<div class="center card"><h2>Sem conexão com o servidor</h2><p class="muted">Não consegui carregar o sistema. Verifique a internet e atualize a página.</p></div>'; return; }
@@ -1586,7 +1588,7 @@ function renderLogin(){
   const v=$('#view');
   if(!webSession){
     v.innerHTML=`<div class="center card stack"><h2>Entrar no Salém Flow</h2>
-      <label class="fld"><span>E-mail</span><input class="inp" id="w-email" type="email" autocomplete="username" inputmode="email"></label>
+      <label class="fld"><span>Usuário ou e-mail</span><input class="inp" id="w-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
       <label class="fld"><span>Senha</span><input class="inp" id="w-pw" type="password" autocomplete="current-password"></label>
       <button class="btn primary lg" data-act="w-login">Entrar</button>
       <button class="btn" data-act="w-forgot">Esqueci minha senha</button>
@@ -1597,8 +1599,8 @@ function renderLogin(){
   v.innerHTML=`<div class="center card stack"><h2>Acesso não liberado</h2><p class="muted">Este e-mail entrou, mas ainda não tem um perfil no sistema. Peça ao administrador para cadastrá-lo.</p><button class="btn" data-act="logout">Sair</button></div>`;
 }
 H['w-login']=async()=>{
-  const email=$('#w-email').value.trim(), password=$('#w-pw').value;
-  if(!email||!password) throw new Error('Informe o e-mail e a senha');
+  const email=loginEmail($('#w-email').value), password=$('#w-pw').value;
+  if(!$('#w-email').value.trim()||!password) throw new Error('Informe o usuário e a senha');
   const r=await sb.auth.signInWithPassword({email,password}); if(r.error) fail(r.error);
 };
 H['w-forgot']=async()=>{
@@ -1640,19 +1642,29 @@ async function newPwDialog(note){
 }
 H['pw-change']=async()=>{ if(await newPwDialog('Escolha a nova senha.')){ await logEv('Senha alterada',me.name); toast('Senha salva'); } };
 H['pw-recover']=async()=>{ if(await newPwDialog('Crie a sua nova senha.')){ toast('Senha salva'); location.hash=''; } };
-H['u-pw']=async d=>{ const u=S.users[d.id]; if(!u.email) throw new Error('Este usuário não tem e-mail cadastrado. Edite o usuário e informe o e-mail.'); if(!(await confirmDlg('Redefinir a senha de '+u.name+'?','Enviaremos um e-mail para '+u.email+' com um link para criar uma nova senha.'))) return; const r=await sb.auth.resetPasswordForEmail(u.email,{redirectTo:location.origin+location.pathname}); if(r.error) fail(r.error); await logEv('Senha redefinida',u.name); toast('E-mail de redefinição enviado'); };
+H['u-pw']=async d=>{
+  const u=S.users[d.id];
+  const v=await ask({title:'Nova senha para '+u.name,ok:'Salvar senha',note:'Informe a nova senha. Passe-a para a pessoa, que pode trocá-la depois em "Alterar senha".',fields:[{id:'p',label:'Nova senha (mínimo 6 caracteres)',type:'password',required:true}]});
+  if(!v) return; if(v.p.length<6) throw new Error('A senha precisa ter pelo menos 6 caracteres');
+  if(!u.authId) throw new Error('Este usuário ainda não tem acesso criado');
+  const r=await sb.rpc('admin_set_password',{p_auth_id:u.authId,p_pw:v.p});
+  if(r.error) throw new Error(/function|schema cache|does not exist/i.test(r.error.message)?'Falta ativar a redefinição de senha no banco (peça ao Claude para rodar o SQL atualizado).':r.error.message);
+  await logEv('Senha redefinida',u.name); toast('Senha de '+u.name+' alterada');
+};
 
 /* ---------- equipe: cada pessoa tem o próprio acesso ---------- */
 async function createStaff(role,title,okLabel){
-  const fields=[{id:'name',label:'Nome',type:'text',required:true},{id:'email',label:'E-mail (será o login)',type:'text',required:true},{id:'pw',label:'Senha inicial (mínimo 6 caracteres)',type:'password',required:true}];
+  const fields=[{id:'name',label:'Nome',type:'text',required:true},{id:'email',label:'Usuário para entrar (ex.: ana) — ou um e-mail',type:'text',required:true},{id:'pw',label:'Senha inicial (mínimo 6 caracteres)',type:'password',required:true}];
   if(!role) fields.splice(1,0,{id:'role',label:'Perfil',type:'select',options:Object.entries(ROLES).map(([v,l])=>({v,l})),value:'atendimento'});
-  const v=await ask({title,ok:okLabel,note:'A pessoa entra com este e-mail e senha e pode trocar a senha depois.',fields}); if(!v) return;
+  const v=await ask({title,ok:okLabel,note:'A pessoa entra com este usuário e senha e pode trocar a senha depois em "Alterar senha".',fields}); if(!v) return;
   const n=v.name.trim(); if(!n) return; if(dupName(n)) throw new Error('Já existe um usuário com este nome'); if(v.pw.length<6) throw new Error('A senha precisa ter pelo menos 6 caracteres');
   const aux=W.createClient(W.url,W.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'sb-aux'}});
-  const r=await aux.auth.signUp({email:v.email.trim(),password:v.pw}); if(r.error) fail(r.error);
+  const mail=loginEmail(v.email); if(!v.email.trim()||mail.startsWith('@')) throw new Error('Informe um usuário válido');
+  if(arr('users').some(x=>(x.email||'').toLowerCase()===mail.toLowerCase())) throw new Error('Já existe um usuário com este login');
+  const r=await aux.auth.signUp({email:mail,password:v.pw}); if(r.error) fail(r.error);
   if(!r.data.user||!r.data.user.id) throw new Error('Não consegui criar o acesso');
   const rl=role||v.role;
-  await put('users','u'+uid(),{name:n,role:rl,active:true,authId:r.data.user.id,email:v.email.trim()});
+  await put('users','u'+uid(),{name:n,role:rl,active:true,authId:r.data.user.id,email:mail,login:mail.endsWith(LOGIN_DOM)?mail.slice(0,-LOGIN_DOM.length):mail});
   await logEv('Usuário criado',n+' ('+ROLES[rl]+')'); toast(n+' cadastrado');
 }
 H['u-new']=()=>createStaff(null,'Novo usuário','Criar');

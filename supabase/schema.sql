@@ -167,3 +167,15 @@ create policy "fotos enviar" on storage.objects for insert to authenticated
 drop policy if exists "fotos apagar" on storage.objects;
 create policy "fotos apagar" on storage.objects for delete to authenticated
   using (bucket_id = 'fotos' and public.app_role() = 'admin');
+
+-- 11) Administrador define nova senha para alguém da equipe (sem precisar de e-mail)
+create or replace function public.admin_set_password(p_auth_id uuid, p_pw text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if public.app_role() is distinct from 'admin' then raise exception 'apenas o administrador'; end if;
+  if length(coalesce(p_pw,'')) < 6 then raise exception 'senha curta'; end if;
+  if not exists (select 1 from public.users u where u.data->>'authId' = p_auth_id::text) then raise exception 'usuário inexistente'; end if;
+  update auth.users set encrypted_password = extensions.crypt(p_pw, extensions.gen_salt('bf')), updated_at = now() where id = p_auth_id;
+end $$;
+revoke all on function public.admin_set_password(uuid, text) from public, anon, authenticated;
+grant execute on function public.admin_set_password(uuid, text) to authenticated;
