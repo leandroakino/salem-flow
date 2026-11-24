@@ -5,6 +5,6 @@ set CHROME="C:\Program Files\Google\Chrome\Application\chrome.exe"
 if not exist %CHROME% set CHROME="C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
 if not exist %CHROME% set CHROME="%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
 set FLAGS=--kiosk-printing --autoplay-policy=no-user-gesture-required --disable-renderer-backgrounding --disable-backgrounding-occluded-windows --disable-features=IntensiveWakeUpThrottling
-start "" %CHROME% %FLAGS% --new-window --start-fullscreen "https://salem-flow.pages.dev/#tv=COLE_AQUI_A_CHAVE_DA_TV"
+start "" %CHROME% %FLAGS% --new-window --start-fullscreen "https://sistema.floriculturasalem.com.br/#tv=COLE_AQUI_A_CHAVE_DA_TV"
 timeout /t 5 >nul
-start "" %CHROME% %FLAGS% --new-window --window-size=460,240 --window-position=0,0 "https://salem-flow.pages.dev/?estacao=baixo"
+start "" %CHROME% %FLAGS% --new-window --window-size=460,240 --window-position=0,0 "https://sistema.floriculturasalem.com.br/?estacao=baixo"

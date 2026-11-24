@@ -18,4 +18,4 @@ Cada computador com uma Bematech vira uma **estação**: ele imprime a ficha soz
 ## Como funciona
 - A estação só imprime pedidos de até 10 minutos atrás e marca cada um como impresso, então nunca sai ficha repetida e nada antigo é reimpresso ao ligar.
 - Deixe a janelinha pequena aberta (pode ficar atrás de outras, mas **não feche**).
-- Para desligar a impressão automática de um computador: abra `https://salem-flow.pages.dev/?estacao=off`.
+- Para desligar a impressão automática de um computador: abra `https://sistema.floriculturasalem.com.br/?estacao=off`.
