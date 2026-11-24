@@ -89,7 +89,7 @@ const mock = `
   await step('produção inicia e vai direto para pronto para subir', async () => {
     await login('Produção'); await page.waitForSelector('text=Fila de produção');
     await btn('Iniciar produção').click();
-    await page.waitForSelector('#fchbar:not([hidden])'); if(!/Cole no produto/.test(await page.locator('#fchbar').innerText())) throw new Error('aviso da ficha da produção não abriu'); if(await page.locator('#dlg .sheet').count()) throw new Error('a ficha não pode bloquear a tela');
+    await page.waitForSelector('#dlg #fch-x'); if(!/cole no produto/i.test(await page.locator('#dlg').innerText())) throw new Error('ficha da produção não abriu'); await page.keyboard.press('Escape'); if(!(await page.locator('#dlg #fch-x').count())) throw new Error('Esc não pode fechar a ficha'); await page.locator('#fch-x').click();
     await page.waitForFunction(() => document.body.innerText.includes('Em produção'));
     await btn('Pronto para subir').click(); await page.waitForSelector('#cm-ok');
     await page.locator('#cm-go').click(); await page.waitForTimeout(300);
@@ -153,7 +153,7 @@ const mock = `
     await page.waitForFunction(() => !document.querySelector('#f-release').disabled);
     await page.locator('#f-release').click(); await closeFicha();
     await page.waitForFunction(() => window.__store['orders/o0002']);
-    await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click(); await btn('Iniciar produção').click(); await page.waitForSelector('#fchbar:not([hidden])');
+    await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click(); await btn('Iniciar produção').click(); await page.waitForSelector('#dlg #fch-x'); await page.locator('#fch-x').click();
     await page.waitForFunction(() => window.__store['orders/o0002'].status === 'em_producao');
     await btn('Pronto para subir').click(); await page.waitForSelector('#cm-ok'); await page.locator('#cm-ok').check(); await page.locator('#cm-go').click();
     await page.waitForFunction(() => window.__store['orders/o0002'].status === 'pronto_subir');
