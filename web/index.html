@@ -209,7 +209,7 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 <script>
 /* Salém Flow — adaptador Supabase: oferece ao sistema a mesma interface (db/assets/dl) usada na versão de teste. */
 (function(){
-const SUPABASE_URL='https://ckdxemisvchffwkmqvyv.supabase.co';
+const SUPABASE_URL=location.origin+'/sb'; // passa pelo túnel do próprio site (functions/sb), funciona em redes que não alcançam o supabase.co
 const SUPABASE_KEY='sb_publishable_WcBIbNv6K8p07Yn3hn0PzQ__Rqns3bP'; // chave pública (feita para ficar no navegador); a segurança está nas regras (RLS) do banco
 if(!window.supabase){ window.SALEM_WEB={failed:true}; return; }
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -241,7 +241,7 @@ function collection(name,ord,lim){
         if(p.eventType==='DELETE'){ const id=p.old&&p.old.id; if(rows.delete(id)) emit([{type:'removed',id}]); return; }
         const n=p.new; const had=rows.has(n.id); rows.set(n.id,{id:n.id,data:n.data,at:n.data&&n.data.at!=null?Number(n.data.at):null}); emit([{type:had?'modified':'added',id:n.id}]);
       }).subscribe(st=>{ if(st==='SUBSCRIBED'&&!first) load(); });
-      const poll=setInterval(load,45000); const vis=()=>{ if(!document.hidden) load(); }; document.addEventListener('visibilitychange',vis); window.addEventListener('online',vis);
+      const poll=setInterval(load,20000); const vis=()=>{ if(!document.hidden) load(); }; document.addEventListener('visibilitychange',vis); window.addEventListener('online',vis);
       (live[name]=live[name]||[]).push(load);
       return ()=>{ closed=true; clearInterval(poll); document.removeEventListener('visibilitychange',vis); window.removeEventListener('online',vis); sb.removeChannel(chan); };
     }
