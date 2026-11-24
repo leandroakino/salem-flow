@@ -178,4 +178,5 @@ function stationPrint(o){
     setTimeout(()=>{ f.remove(); res(); },20000);
   });
 }
+window.printSlipNow=async o=>{ await stationPrint(o); toast('Ficha enviada para a impressora'); };
 H['est-teste']=async()=>{ const o=arr('orders').sort((a,b)=>(b.num||0)-(a.num||0))[0]; if(!o) throw new Error('Ainda não há pedidos para imprimir um teste'); await stationPrint(o); toast('Ficha de teste enviada para a impressora'); };
