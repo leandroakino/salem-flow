@@ -3,7 +3,7 @@
 Cada atualização publicada ganha um número e fica registrada aqui com o commit correspondente. A versão aparece na tela de login e no menu do usuário.
 Para voltar a uma versão: `git checkout <commit>` (ou peça ao Claude: "voltar para a v1.2").
 
-## v1.5
+## v1.5 (commit 8e3ab11)
 - Sem "Aceitar na fila": o pedido liberado já entra em "Aguardando produção".
 - Ficha de baixo sai na liberação do pedido; pendentes das últimas 24 h saem quando o computador volta; reimpressão se o pedido for alterado; aviso impresso de cancelamento.
 - Aviso de pedido novo na tela da produção (mensagem + som).
