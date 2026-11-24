@@ -67,7 +67,7 @@ begin
   if exists (select 1 from public.users) then raise exception 'o sistema já foi configurado'; end if;
   v_id := 'u' || substr(md5(random()::text || clock_timestamp()::text), 1, 8);
   insert into public.users(id, data) values (v_id, jsonb_build_object('name', p_name, 'role', 'admin', 'active', true, 'authId', auth.uid()::text));
-  insert into public.app_settings(key, value) values ('tv_token', encode(gen_random_bytes(12), 'hex')) on conflict do nothing;
+  insert into public.app_settings(key, value) values ('tv_token', md5(random()::text || clock_timestamp()::text || auth.uid()::text)) on conflict do nothing;
   return v_id;
 end $$;
 
