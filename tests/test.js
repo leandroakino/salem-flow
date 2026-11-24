@@ -89,12 +89,12 @@ const mock = `
   await step('produção inicia e vai direto para pronto para subir', async () => {
     await login('Produção'); await page.waitForSelector('text=Fila de produção');
     await btn('Iniciar produção').click();
-    await page.waitForSelector('#dlg #fch-x'); if(!/cole no produto/i.test(await page.locator('#dlg').innerText())) throw new Error('ficha da produção não abriu'); await page.keyboard.press('Escape'); if(!(await page.locator('#dlg #fch-x').count())) throw new Error('Esc não pode fechar a ficha'); await page.locator('#fch-x').click();
+    if(await page.locator('#dlg .sheet').count()) throw new Error('a ficha não pode abrir ao iniciar a produção');
     await page.waitForFunction(() => document.body.innerText.includes('Em produção'));
-    await btn('Pronto para subir').click(); await page.waitForSelector('#cm-ok');
-    await page.locator('#cm-go').click(); await page.waitForTimeout(300);
-    if ((await store())['orders/o0001'].status !== 'em_producao') throw new Error('subiu sem conferir');
-    await page.locator('#cm-ok').check(); await page.locator('#cm-go').click();
+    await btn('Pronto para subir').click(); if(await page.locator('#cm-ok').count()) throw new Error('não deve pedir conferência da montagem');
+    await page.waitForFunction(() => window.__store['orders/o0001'].status === 'pronto_subir');
+
+
     await page.waitForFunction(() => window.__store['orders/o0001'].status === 'pronto_subir');
     const s = await store();
     if (!s['orders/o0001'].stockDone) throw new Error('stockDone');
@@ -153,9 +153,9 @@ const mock = `
     await page.waitForFunction(() => !document.querySelector('#f-release').disabled);
     await page.locator('#f-release').click(); await closeFicha();
     await page.waitForFunction(() => window.__store['orders/o0002']);
-    await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click(); await btn('Iniciar produção').click(); await page.waitForSelector('#dlg #fch-x'); await page.locator('#fch-x').click();
+    await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click(); await btn('Iniciar produção').click();
     await page.waitForFunction(() => window.__store['orders/o0002'].status === 'em_producao');
-    await btn('Pronto para subir').click(); await page.waitForSelector('#cm-ok'); await page.locator('#cm-ok').check(); await page.locator('#cm-go').click();
+    await btn('Pronto para subir').click();
     await page.waitForFunction(() => window.__store['orders/o0002'].status === 'pronto_subir');
     const s = await store(); if (s['stock/s-rosa'].qty.producao !== -4) throw new Error('rosa=' + s['stock/s-rosa'].qty.producao);
     if (!s['orders/o0002'].history.some(h => h.act === 'Estoque ficou negativo')) throw new Error('sem aviso de estoque negativo');

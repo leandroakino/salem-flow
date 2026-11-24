@@ -208,7 +208,7 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 <script>
 (async function(){
 'use strict';
-const APP_VERSION='1.3';
+const APP_VERSION='1.4';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -1327,7 +1327,7 @@ H['o-direct']=async d=>{ const o=ordr(d);
   await oact(cur,{status:'recebido',skipProd:true,receivedBy:me.name,times:{recebidoAt:now()},...(plan.length?{directUsed:[...(cur.directUsed||[]),...plan]}:{})},'Sem produção','Produto do atendimento'+(plan.length?'. Baixa de '+S.stock[v.sid].name:''));
   await applyDirect(o.id,plan,o); toast(orderNum(o)+' enviado direto para retirada/entrega'); };
 H['p-accept']=d=>oact(ordr(d),{status:'aguardando_prod',responsible:me.name,times:{aceitoAt:now()}},'Aceito na fila de produção');
-H['p-start']=async d=>{ const o=ordr(d), resume=o.status==='aguardando_material'; const pt={status:'em_producao',responsible:o.responsible||me.name,block:null,times:{}}; if(!(o.times&&o.times.inicioAt)) pt.times.inicioAt=now(); if(!(o.times&&o.times.aceitoAt)) pt.times.aceitoAt=now(); await oact(o,pt,resume?'Produção retomada':'Produção iniciada'); if(!resume){ const n=await waitOrder(o.id); if(n) openFicha(n,'Produção iniciada. Imprima a ficha e cole no produto.'); } };
+H['p-start']=async d=>{ const o=ordr(d), resume=o.status==='aguardando_material'; const pt={status:'em_producao',responsible:o.responsible||me.name,block:null,times:{}}; if(!(o.times&&o.times.inicioAt)) pt.times.inicioAt=now(); if(!(o.times&&o.times.aceitoAt)) pt.times.aceitoAt=now(); await oact(o,pt,resume?'Produção retomada':'Produção iniciada'); };
 H['p-resume']=d=>oact(ordr(d),{status:'em_producao',block:null,waitReason:null},'Produção retomada');
 async function newMatReq(orderId){
   const o=orderId&&S.orders[orderId];
@@ -1347,18 +1347,10 @@ H['mr-prov']=async d=>{ const m=S.matreq[d.id]; const v=await ask({title:'Materi
 H['mr-got']=async d=>{ const m=S.matreq[d.id]; await patch('matreq',m.id,{status:'resolvido',resBy:me.name,resAt:now()}); if(m.orderId&&S.orders[m.orderId]) await oact(S.orders[m.orderId],{},'Material recebido',m.name); toast('Material marcado como recebido'); };
 H['mr-cancel']=async d=>{ if(await confirmDlg('Cancelar este aviso?','','Cancelar aviso',true)) await patch('matreq',d.id,{status:'cancelado',resBy:me.name,resAt:now()}); };
 H['p-problem']=async d=>{ const v=await ask({title:'Informar problema',ok:'Bloquear pedido',danger:true,fields:[{id:'t',label:'O que aconteceu?',type:'textarea',required:true}]}); if(v) await oact(ordr(d),{status:'bloqueado',block:{reason:v.t,by:me.name,at:now(),negAuth:false}},'Pedido bloqueado',v.t); };
-H['p-done']=d=>{ const o=ordr(d); if(o.status!=='em_producao') return;
-  openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>Pronto para subir ${orderNum(o)}</h2>
-    <div class="cardmsg">${esc(prodItemsText(o))}</div>${o.buildNotes?`<div class="small"><b>Montagem:</b> ${esc(o.buildNotes)}</div>`:''}${thumbsHTML(o)}
-    <label class="row"><input type="checkbox" id="cm-ok"> Conferi a montagem com a descrição, a foto e o cartão: está de acordo</label>
-    <div class="row end"><button class="btn" id="cm-x">Cancelar</button><button class="btn primary lg" id="cm-go">Pronto para subir</button></div></div>`);
-  $('#cm-x').onclick=()=>closeLayer('dlg');
-  $('#cm-go').onclick=()=>run(async()=>{
-    if(!$('#cm-ok').checked){ toast('Marque que conferiu a montagem',true); return; }
-    const cur=S.orders[o.id]; if(!cur||cur.status!=='em_producao'){ closeLayer('dlg'); return; }
-    const r=await completeProduction(cur); closeLayer('dlg');
-    toast(orderNum(cur)+' pronto para subir'+(r.neg.length?'. Atenção: estoque negativo em '+r.neg.join(', '):''));
-  }); };
+H['p-done']=async d=>{ const o=ordr(d); if(o.status!=='em_producao') return;
+  const cur=S.orders[o.id]; if(!cur||cur.status!=='em_producao') return;
+  const r=await completeProduction(cur);
+  toast(orderNum(cur)+' pronto para subir'+(r.neg.length?'. Atenção: estoque negativo em '+r.neg.join(', '):'')); };
 H['p-confreq']=d=>oact(ordr(d),{confReq:true},'Conferência solicitada à loja');
 H['conf-ok']=d=>oact(ordr(d),{confReq:false},'Conferência feita pelo atendimento');
 H['card-done']=async d=>{ const o=ordr(d); const v=await ask({title:'Cartão '+orderNum(o),ok:'Cartão pronto',fields:[{id:'none',label:'Este pedido não terá cartão',type:'checkbox',value:o.card==='sem'},{id:'msg',label:'Mensagem do cartão',type:'textarea',value:o.cardMsg}]}); if(!v) return; if(!v.none&&!v.msg) throw new Error('Escreva a mensagem do cartão ou marque que não terá cartão'); await oact(o,{card:v.none?'sem':'com',cardMsg:v.none?'':v.msg,cardDone:true},v.none?'Confirmado: sem cartão':'Cartão feito',v.none?'':v.msg); };
