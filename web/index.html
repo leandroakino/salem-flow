@@ -1554,6 +1554,7 @@ const loginEmail=v=>{ v=String(v||'').trim(); return v.includes('@')?v:v.toLower
 
 async function webBoot(){
   if(!W||W.failed){ $('#view').innerHTML='<div class="center card"><h2>Sem conexão com o servidor</h2><p class="muted">Não consegui carregar o sistema. Verifique a internet e atualize a página.</p></div>'; return; }
+  stationInit();
   const m=location.hash.match(/^#tv=([A-Za-z0-9]+)/);
   if(m){ TVONLY=true; view='tv'; tvFeedStart(m[1]); render(); return; }
   const {data}=await sb.auth.getSession(); webSession=data.session;
@@ -1672,6 +1673,54 @@ H['dr-new']=()=>createStaff('entregador','Novo entregador','Cadastrar');
 
 /* ---------- número do pedido: sequência no banco ---------- */
 async function nextNum(){ const r=await sb.rpc('next_order_number'); if(r.error||r.data==null) throw new Error('Não foi possível gerar o número do pedido agora. Tente novamente.'); return Number(r.data); }
+
+/* ====================================================================
+   Estação de impressão: um computador com a Bematech vira "estação" e imprime a ficha sozinho,
+   não importa de qual aparelho veio o toque. Precisa do Chrome aberto com --kiosk-printing
+   (os atalhos prontos estão na pasta estacoes/).
+     ?estacao=cima   -> imprime quando um pedido é LIBERADO (atendimento, em cima)
+     ?estacao=baixo  -> imprime quando a PRODUÇÃO INICIA o pedido (embaixo)
+     ?estacao=off    -> desliga
+   ==================================================================== */
+let STATION='', stLast='', stSkipped=0;
+const ST_WINDOW=10*60*1000; // só imprime o que aconteceu nos últimos 10 min (não reimprime pedidos antigos ao ligar)
+const stBusy=new Set();
+function stationInit(){
+  try{ const q=new URLSearchParams(location.search).get('estacao'); if(q!==null){ lsSet('salem.station',q==='cima'||q==='baixo'?q:''); history.replaceState(null,'',location.pathname+location.hash); } }catch(e){}
+  STATION=lsGet('salem.station')||'';
+  if(STATION){ setInterval(stationScan,2000); setInterval(stationPill,1000); }
+}
+function stationPill(){
+  let el=$('#estacao'); if(!STATION){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='estacao'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:44;background:#12432D;color:#fff;font:12px/1.3 system-ui,sans-serif;padding:6px 10px;border-radius:8px;opacity:.92;max-width:70vw'; document.body.appendChild(el); }
+  el.textContent='Impressão automática: '+(STATION==='cima'?'liberação (atendimento)':'início da produção')+(me?'':' · faça login')+(stLast?' · última: '+stLast:'')+(stSkipped?' · '+stSkipped+' antigo(s) ignorado(s)':'');
+}
+function stationScan(){
+  if(!STATION||!me||!loaded.orders||webBusy) return;
+  const t=now(), kind=STATION==='cima'?'lib':'prod';
+  for(const o of arr('orders')){
+    const at=kind==='lib'?(o.status==='liberado'&&!o.skipProd?(o.times||{}).liberadoAt:0):(o.status==='em_producao'?(o.times||{}).inicioAt:0);
+    if(!at||(o.printed&&o.printed[kind])||stBusy.has(o.id+kind)) continue;
+    if(t-at>ST_WINDOW){ continue; }
+    stBusy.add(o.id+kind); run(()=>stationJob(o,kind));
+  }
+}
+async function stationJob(o,kind){
+  // marca como impresso ANTES de imprimir, para nunca sair duas vezes (mesmo se a página recarregar)
+  await patch('orders',o.id,{printed:{...(o.printed||{}),[kind]:now()}});
+  await stationPrint(S.orders[o.id]||o);
+  stLast=orderNum(o)+' às '+fT(now());
+}
+function stationPrint(o){
+  return new Promise(res=>{
+    const box=document.createElement('div'); box.style.cssText='position:fixed;left:-9999px;top:0'; box.innerHTML=slipHTML(o); document.body.appendChild(box);
+    try{ if(window.JsBarcode) window.JsBarcode('#slip-bc',String(o.num).padStart(4,'0'),{format:'CODE128',width:2,height:44,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'}); }catch(e){}
+    const html=slipDoc(o); box.remove();
+    const f=document.createElement('iframe'); f.style.cssText='position:fixed;width:0;height:0;border:0;visibility:hidden'; f.srcdoc=html; document.body.appendChild(f);
+    setTimeout(()=>{ f.remove(); res(); },20000);
+  });
+}
+H['est-teste']=async()=>{ const o=arr('orders').sort((a,b)=>(b.num||0)-(a.num||0))[0]; if(!o) throw new Error('Ainda não há pedidos para imprimir um teste'); await stationPrint(o); toast('Ficha de teste enviada para a impressora'); };
 (typeof webBoot==='function'?webBoot:()=>{ subscribe(); render(); })();
 })();
 </script>
