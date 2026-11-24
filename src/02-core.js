@@ -22,12 +22,15 @@ const dur=ms=>ms<60000?'menos de 1 min':ms<3600000?Math.round(ms/60000)+' min':(
 
 /* ---------- capacidades ---------- */
 let db=null,assets=null,dl=null;
-try{ if(window.claude&&window.claude.use){ db=await window.claude.use('db'); assets=await window.claude.use('assets'); dl=await window.claude.use('downloads'); } }catch(e){ console.error(e); }
+if(window.SALEM_WEB&&!window.SALEM_WEB.failed){ ({db,assets,dl}=window.SALEM_WEB); }
+else try{ if(window.claude&&window.claude.use){ db=await window.claude.use('db'); assets=await window.claude.use('assets'); dl=await window.claude.use('downloads'); } }catch(e){ console.error(e); }
 if(!db){
   $('#view').innerHTML='<div class="center card"><h2>Banco de dados indisponível</h2><p class="muted">Abra esta página pelo Claude, com a sua conta conectada, para o Salém Flow acessar o banco de dados compartilhado.</p></div>';
   return;
 }
 
+const photoURL=id=>(window.SALEM_WEB&&window.SALEM_WEB.photoURL)?window.SALEM_WEB.photoURL(id):'/_blob/'+id;
+let TVONLY=false;
 /* ---------- constantes ---------- */
 const ST={
   rascunho:{l:'Rascunho',c:'gray'}, liberado:{l:'Liberado',c:'blue'}, aguardando_prod:{l:'Aguardando produção',c:'violet'},

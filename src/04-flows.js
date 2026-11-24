@@ -123,7 +123,7 @@ function formHTML(){
       ${F.card==='com'?`<label class="fld"><span>Mensagem do cartão (se já tiver)</span><textarea class="txt" data-f="cardMsg">${esc(F.cardMsg)}</textarea></label>`:''}</section>
     <section class="grid2"><label class="fld"><span>Observações de montagem (a produção vê)</span><textarea class="txt" data-f="buildNotes">${esc(F.buildNotes)}</textarea></label>
       <label class="fld"><span>Observações internas (só atendimento)</span><textarea class="txt" data-f="notes">${esc(F.notes)}</textarea></label></section>
-    <section class="stack"><h3>Fotos de referência</h3><div class="thumbs">${F.photos.map((p,i)=>`<span><img src="/_blob/${esc(p.id)}" alt="Referência"><br><button type="button" class="btn sm ghost" data-act="f-photo-del" data-i="${i}">Remover</button></span>`).join('')}</div>
+    <section class="stack"><h3>Fotos de referência</h3><div class="thumbs">${F.photos.map((p,i)=>`<span><img src="${esc(photoURL(p.id))}" alt="Referência"><br><button type="button" class="btn sm ghost" data-act="f-photo-del" data-i="${i}">Remover</button></span>`).join('')}</div>
       ${assets?'<input type="file" id="fo-photo" accept="image/*" multiple class="inp">':'<span class="muted small">O envio de fotos não está disponível para o seu acesso. Peça ao administrador para ajustar o compartilhamento.</span>'}</section>
     <section class="stack"><h3>Pagamento</h3><div class="grid2"><label class="fld"><span>Forma</span><select class="sel" data-f="payMethod">${opt(PAYM,F.payMethod)}</select></label><label class="fld"><span>Situação</span><select class="sel" data-f="payStatus">${opt(PAYS,F.payStatus)}</select></label>
       <label class="fld"><span>Taxa de entrega (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="fee" value="${esc(F.fee)}"></label><label class="fld"><span>Desconto (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="discount" value="${esc(F.discount)}"></label></div>
@@ -275,7 +275,7 @@ function handleOrderChanges(snap){
 /* ---------- ações ---------- */
 const H={};
 const ordr=d=>S.orders[d.id];
-const TV_URL='https://claude.ai/artifact/NxdWdZfLGYEwhLZty42yHC#tv';
+let TV_URL='https://claude.ai/artifact/NxdWdZfLGYEwhLZty42yHC#tv';
 function tvDialog(){
   openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>Painel de TV</h2><p class="muted">Para a TV não atrapalhar quem movimenta os pedidos, abra o painel em uma janela ou aparelho separado, por exemplo o computador ligado à TV da produção.</p>
     <div class="stack"><a class="btn primary lg" href="${TV_URL}" target="_blank" rel="noopener">Abrir o painel em uma nova aba</a><button class="btn" id="tv-copy">Copiar o link do painel</button>
@@ -517,7 +517,3 @@ function subscribe(){
 window.addEventListener('online',sched); window.addEventListener('offline',sched);
 window.addEventListener('hashchange',()=>{ if(!me) return; const h=location.hash.replace('#',''); if(NAV[R()].concat(['tv']).includes(h)&&h!==view){ view=h; render(true); } });
 setInterval(sched,30000);
-subscribe();
-render();
-})();
-</script>

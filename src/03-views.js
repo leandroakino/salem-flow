@@ -42,7 +42,7 @@ function flags(o){
   if(o.changedAt&&PIPE.includes(o.status)&&o.changedAt>((o.times&&(o.times.aceitoAt||o.times.liberadoAt))||0)) f.push('<span class="chip c-violet">Alterado</span>');
   return f.join('');
 }
-const thumbsHTML=o=>(o.photos&&o.photos.length)?`<div class="thumbs">${o.photos.map(p=>`<img src="/_blob/${esc(p.id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(p.id)}">`).join('')}</div>`:'';
+const thumbsHTML=o=>(o.photos&&o.photos.length)?`<div class="thumbs">${o.photos.map(p=>`<img src="${esc(photoURL(p.id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(p.id))}">`).join('')}</div>`:'';
 function prodCard(o){
   const pa=primaryAction(o);
   const descs=(o.items||[]).filter(i=>i.desc).map(i=>`<div class="cardmsg">${esc(i.name)}: ${esc(i.desc)}</div>`).join('');
@@ -97,7 +97,7 @@ function restoreBoard(s){ if(!s) return; const b=document.querySelector('#view .
 window.addEventListener('resize',()=>fitBoards()); window.addEventListener('orientationchange',()=>setTimeout(fitBoards,200));
 function render(force){
   dirty=false;
-  const tv=view==='tv'&&me;
+  const tv=view==='tv'&&(me||TVONLY);
   document.body.classList.toggle('is-tv',!!tv);
   $('#hdr').hidden=!!tv; $('#nav').parentElement.hidden=!!tv;
   if(!force&&typing()){
@@ -106,7 +106,7 @@ function render(force){
     return;
   }
   renderHdr();
-  if(!me){ renderLogin(); $('#nav').innerHTML=''; return; }
+  if(!me&&!TVONLY){ renderLogin(); $('#nav').innerHTML=''; return; }
   if(tv){ if(!wlOn){ wlOn=true; try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){} } const bs=boardScroll(); $('#view').innerHTML=viewTV(); restoreBoard(bs); tvTick(); return; }
   const allowed=NAV[R()];
   if(!allowed.includes(view)) view=allowed[0];
@@ -429,7 +429,7 @@ function tvCard(o,c,pi){
   const its=(o.items||[]).filter(i=>!i.direct);
   const rows=its.length?its.map(i=>`<div class="it"><em>${esc(i.qty)}×</em>${esc(i.name)}${i.desc?`<span class="d">${esc(i.desc)}</span>`:''}</div>`).join(''):`<div class="it">${esc(prodItemsText(o))}</div>`;
   const flag=o.status==='aguardando_material'?'Falta material':o.status==='bloqueado'?'Bloqueado':'';
-  const ph=o.photos&&o.photos.length?`<img class="ph" src="/_blob/${esc(o.photos[0].id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(o.photos[0].id)}">`:'';
+  const ph=o.photos&&o.photos.length?`<img class="ph" src="${esc(photoURL(o.photos[0].id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(o.photos[0].id))}">`:'';
   return `<article class="tvi ${w.k} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
     <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
     <div class="tvb">${rows}${flag?`<span class="flag">${flag}</span>`:''}${o.buildNotes?`<p class="nt">Montagem: ${esc(o.buildNotes)}</p>`:''}</div>${ph}</article>`;
@@ -439,7 +439,7 @@ function viewTV(){
   const sort=L=>L.sort((a,b)=>(deadline(a)||9e15)-(deadline(b)||9e15));
   const panels=[['Aguardando produção','violet',sort(O.filter(o=>['liberado','aguardando_prod'].includes(o.status)))],['Em produção','amber',sort(O.filter(o=>['em_producao','aguardando_material','bloqueado'].includes(o.status)))],['Prontos para subir','green',sort(O.filter(o=>['finalizado','pronto_subir','em_transporte'].includes(o.status)))]];
   tvTrack(panels);
-  const late=O.filter(isLate).length, soon=O.filter(isSoon).length, ctl=!!me;
+  const late=O.filter(isLate).length, soon=O.filter(isSoon).length, ctl=!!me&&!TVONLY;
   const stale=!navigator.onLine||staleMsg;
   return `<div class="tv"><div class="tvtop"><div class="brand">${LEAF}Produção</div>
     <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>

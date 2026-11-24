@@ -230,12 +230,15 @@ const dur=ms=>ms<60000?'menos de 1 min':ms<3600000?Math.round(ms/60000)+' min':(
 
 /* ---------- capacidades ---------- */
 let db=null,assets=null,dl=null;
-try{ if(window.claude&&window.claude.use){ db=await window.claude.use('db'); assets=await window.claude.use('assets'); dl=await window.claude.use('downloads'); } }catch(e){ console.error(e); }
+if(window.SALEM_WEB&&!window.SALEM_WEB.failed){ ({db,assets,dl}=window.SALEM_WEB); }
+else try{ if(window.claude&&window.claude.use){ db=await window.claude.use('db'); assets=await window.claude.use('assets'); dl=await window.claude.use('downloads'); } }catch(e){ console.error(e); }
 if(!db){
   $('#view').innerHTML='<div class="center card"><h2>Banco de dados indisponível</h2><p class="muted">Abra esta página pelo Claude, com a sua conta conectada, para o Salém Flow acessar o banco de dados compartilhado.</p></div>';
   return;
 }
 
+const photoURL=id=>(window.SALEM_WEB&&window.SALEM_WEB.photoURL)?window.SALEM_WEB.photoURL(id):'/_blob/'+id;
+let TVONLY=false;
 /* ---------- constantes ---------- */
 const ST={
   rascunho:{l:'Rascunho',c:'gray'}, liberado:{l:'Liberado',c:'blue'}, aguardando_prod:{l:'Aguardando produção',c:'violet'},
@@ -522,7 +525,7 @@ function flags(o){
   if(o.changedAt&&PIPE.includes(o.status)&&o.changedAt>((o.times&&(o.times.aceitoAt||o.times.liberadoAt))||0)) f.push('<span class="chip c-violet">Alterado</span>');
   return f.join('');
 }
-const thumbsHTML=o=>(o.photos&&o.photos.length)?`<div class="thumbs">${o.photos.map(p=>`<img src="/_blob/${esc(p.id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(p.id)}">`).join('')}</div>`:'';
+const thumbsHTML=o=>(o.photos&&o.photos.length)?`<div class="thumbs">${o.photos.map(p=>`<img src="${esc(photoURL(p.id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(p.id))}">`).join('')}</div>`:'';
 function prodCard(o){
   const pa=primaryAction(o);
   const descs=(o.items||[]).filter(i=>i.desc).map(i=>`<div class="cardmsg">${esc(i.name)}: ${esc(i.desc)}</div>`).join('');
@@ -577,7 +580,7 @@ function restoreBoard(s){ if(!s) return; const b=document.querySelector('#view .
 window.addEventListener('resize',()=>fitBoards()); window.addEventListener('orientationchange',()=>setTimeout(fitBoards,200));
 function render(force){
   dirty=false;
-  const tv=view==='tv'&&me;
+  const tv=view==='tv'&&(me||TVONLY);
   document.body.classList.toggle('is-tv',!!tv);
   $('#hdr').hidden=!!tv; $('#nav').parentElement.hidden=!!tv;
   if(!force&&typing()){
@@ -586,7 +589,7 @@ function render(force){
     return;
   }
   renderHdr();
-  if(!me){ renderLogin(); $('#nav').innerHTML=''; return; }
+  if(!me&&!TVONLY){ renderLogin(); $('#nav').innerHTML=''; return; }
   if(tv){ if(!wlOn){ wlOn=true; try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').catch(()=>{}); }catch(e){} } const bs=boardScroll(); $('#view').innerHTML=viewTV(); restoreBoard(bs); tvTick(); return; }
   const allowed=NAV[R()];
   if(!allowed.includes(view)) view=allowed[0];
@@ -909,7 +912,7 @@ function tvCard(o,c,pi){
   const its=(o.items||[]).filter(i=>!i.direct);
   const rows=its.length?its.map(i=>`<div class="it"><em>${esc(i.qty)}×</em>${esc(i.name)}${i.desc?`<span class="d">${esc(i.desc)}</span>`:''}</div>`).join(''):`<div class="it">${esc(prodItemsText(o))}</div>`;
   const flag=o.status==='aguardando_material'?'Falta material':o.status==='bloqueado'?'Bloqueado':'';
-  const ph=o.photos&&o.photos.length?`<img class="ph" src="/_blob/${esc(o.photos[0].id)}" alt="Foto de referência" data-act="photo-zoom" data-src="/_blob/${esc(o.photos[0].id)}">`:'';
+  const ph=o.photos&&o.photos.length?`<img class="ph" src="${esc(photoURL(o.photos[0].id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(o.photos[0].id))}">`:'';
   return `<article class="tvi ${w.k} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
     <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
     <div class="tvb">${rows}${flag?`<span class="flag">${flag}</span>`:''}${o.buildNotes?`<p class="nt">Montagem: ${esc(o.buildNotes)}</p>`:''}</div>${ph}</article>`;
@@ -919,7 +922,7 @@ function viewTV(){
   const sort=L=>L.sort((a,b)=>(deadline(a)||9e15)-(deadline(b)||9e15));
   const panels=[['Aguardando produção','violet',sort(O.filter(o=>['liberado','aguardando_prod'].includes(o.status)))],['Em produção','amber',sort(O.filter(o=>['em_producao','aguardando_material','bloqueado'].includes(o.status)))],['Prontos para subir','green',sort(O.filter(o=>['finalizado','pronto_subir','em_transporte'].includes(o.status)))]];
   tvTrack(panels);
-  const late=O.filter(isLate).length, soon=O.filter(isSoon).length, ctl=!!me;
+  const late=O.filter(isLate).length, soon=O.filter(isSoon).length, ctl=!!me&&!TVONLY;
   const stale=!navigator.onLine||staleMsg;
   return `<div class="tv"><div class="tvtop"><div class="brand">${LEAF}Produção</div>
     <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
@@ -1074,7 +1077,7 @@ function formHTML(){
       ${F.card==='com'?`<label class="fld"><span>Mensagem do cartão (se já tiver)</span><textarea class="txt" data-f="cardMsg">${esc(F.cardMsg)}</textarea></label>`:''}</section>
     <section class="grid2"><label class="fld"><span>Observações de montagem (a produção vê)</span><textarea class="txt" data-f="buildNotes">${esc(F.buildNotes)}</textarea></label>
       <label class="fld"><span>Observações internas (só atendimento)</span><textarea class="txt" data-f="notes">${esc(F.notes)}</textarea></label></section>
-    <section class="stack"><h3>Fotos de referência</h3><div class="thumbs">${F.photos.map((p,i)=>`<span><img src="/_blob/${esc(p.id)}" alt="Referência"><br><button type="button" class="btn sm ghost" data-act="f-photo-del" data-i="${i}">Remover</button></span>`).join('')}</div>
+    <section class="stack"><h3>Fotos de referência</h3><div class="thumbs">${F.photos.map((p,i)=>`<span><img src="${esc(photoURL(p.id))}" alt="Referência"><br><button type="button" class="btn sm ghost" data-act="f-photo-del" data-i="${i}">Remover</button></span>`).join('')}</div>
       ${assets?'<input type="file" id="fo-photo" accept="image/*" multiple class="inp">':'<span class="muted small">O envio de fotos não está disponível para o seu acesso. Peça ao administrador para ajustar o compartilhamento.</span>'}</section>
     <section class="stack"><h3>Pagamento</h3><div class="grid2"><label class="fld"><span>Forma</span><select class="sel" data-f="payMethod">${opt(PAYM,F.payMethod)}</select></label><label class="fld"><span>Situação</span><select class="sel" data-f="payStatus">${opt(PAYS,F.payStatus)}</select></label>
       <label class="fld"><span>Taxa de entrega (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="fee" value="${esc(F.fee)}"></label><label class="fld"><span>Desconto (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="discount" value="${esc(F.discount)}"></label></div>
@@ -1226,7 +1229,7 @@ function handleOrderChanges(snap){
 /* ---------- ações ---------- */
 const H={};
 const ordr=d=>S.orders[d.id];
-const TV_URL='https://claude.ai/artifact/NxdWdZfLGYEwhLZty42yHC#tv';
+let TV_URL='https://claude.ai/artifact/NxdWdZfLGYEwhLZty42yHC#tv';
 function tvDialog(){
   openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>Painel de TV</h2><p class="muted">Para a TV não atrapalhar quem movimenta os pedidos, abra o painel em uma janela ou aparelho separado, por exemplo o computador ligado à TV da produção.</p>
     <div class="stack"><a class="btn primary lg" href="${TV_URL}" target="_blank" rel="noopener">Abrir o painel em uma nova aba</a><button class="btn" id="tv-copy">Copiar o link do painel</button>
@@ -1468,7 +1471,6 @@ function subscribe(){
 window.addEventListener('online',sched); window.addEventListener('offline',sched);
 window.addEventListener('hashchange',()=>{ if(!me) return; const h=location.hash.replace('#',''); if(NAV[R()].concat(['tv']).includes(h)&&h!==view){ view=h; render(true); } });
 setInterval(sched,30000);
-subscribe();
-render();
+(typeof webBoot==='function'?webBoot:()=>{ subscribe(); render(); })();
 })();
 </script>
