@@ -9,7 +9,7 @@ function primaryAction(o){
     case 'aguardando_material': return prod?{a:'p-resume',l:'Material chegou, retomar'}:null;
     case 'bloqueado': if(o.block&&o.block.negAuth) return adm?{a:'a-neg',l:'Autorizar estoque negativo'}:null; return prod?{a:'p-resume',l:'Resolvido, retomar'}:null;
     case 'finalizado': return prod?{a:'p-ready',l:'Pronto para subir'}:null;
-    case 'pronto_subir': return (prod||att)?{a:'t-start',l:'Iniciar transporte'}:null;
+    case 'pronto_subir': return att?{a:'r-receive',l:'Receber e conferir'}:null;
     case 'em_transporte': return att?{a:'r-receive',l:'Receber e conferir'}:null;
     case 'divergencia': return prod?{a:'p-fix',l:'Corrigido, reenviar'}:null;
     case 'recebido': if(isDrv()) return o.type==='entrega'?{a:'d-out',l:'Peguei para entregar'}:null; return att?(o.type==='entrega'?{a:'d-out',l:'Saiu para entrega'}:{a:'d-pick',l:'Registrar retirada'}):null;
@@ -24,7 +24,6 @@ function secondary(o){
   if(att&&['liberado','aguardando_prod'].includes(o.status)) a.push({a:'o-direct',l:'Não passa pela produção'});
   if(att&&open&&o.status!=='rascunho'&&o.card!=='sem'&&!o.cardDone) a.push({a:'card-done',l:'Cartão pronto'});
   if(att) a.push({a:'o-dup',l:'Duplicar pedido'});
-  if(prod&&o.status==='liberado') a.push({a:'p-accept',l:'Aceitar na fila'});
   if(prod&&['liberado','aguardando_prod','em_producao'].includes(o.status)) a.push({a:'p-wait',l:'Avisar falta de material'},{a:'p-problem',l:'Informar problema'});
   if(prod&&['em_producao','finalizado'].includes(o.status)&&!o.confReq) a.push({a:'p-confreq',l:'Solicitar conferência'});
   if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-receive',l:'Receber e conferir'});
@@ -43,6 +42,9 @@ function flags(o){
   return f.join('');
 }
 const thumbsHTML=o=>(o.photos&&o.photos.length)?`<div class="thumbs">${o.photos.map(p=>`<img src="${esc(photoURL(p.id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(p.id))}">`).join('')}</div>`:'';
+const dayGroup=o=>{ if(isLate(o)) return 'Atrasados'; if(!o.date) return 'Sem data'; if(o.date===todayKey()) return 'Hoje'; if(o.date===dayKey(now()+864e5)) return 'Amanhã'; return 'Próximos dias'; };
+const DG_CLS={'Atrasados':'g-late','Hoje':'g-today','Amanhã':'g-next','Próximos dias':'g-far','Sem data':'g-far'};
+function groupedList(L,fn){ let last='',out=''; L.forEach(o=>{ const g=dayGroup(o); if(g!==last){ out+=`<div class="dg ${DG_CLS[g]}">${g}</div>`; last=g; } out+=fn(o); }); return out; }
 function prodCard(o){
   const pa=primaryAction(o);
   const descs=(o.items||[]).filter(i=>i.desc).map(i=>`<div class="cardmsg">${esc(i.name)}: ${esc(i.desc)}</div>`).join('');
@@ -192,11 +194,11 @@ function viewPedidos(){
 
 /* ---------- fila de produção ---------- */
 function viewFila(){
-  const defs=[['Novos liberados',['liberado'],'blue'],['Aguardando produção',['aguardando_prod'],'violet'],['Em produção',['em_producao','aguardando_material'],'amber'],['Finalizados',['finalizado'],'teal'],['Prontos para subir',['pronto_subir','em_transporte'],'green'],['Problemas e bloqueios',['bloqueado','divergencia'],'red']];
+  const defs=[['Aguardando produção',['liberado','aguardando_prod'],'violet'],['Em produção',['em_producao','aguardando_material'],'amber'],['Finalizados',['finalizado'],'teal'],['Prontos para subir',['pronto_subir','em_transporte'],'green'],['Problemas e bloqueios',['bloqueado','divergencia'],'red']];
   const O=arr('orders');
-  return `<div class="row between" style="margin:6px 0 12px"><h2>Fila de produção</h2><span class="muted small">Atualiza sozinha. Toque no pedido para ver detalhes.</span></div><div class="board">${defs.map(([t,sts,c])=>{
+  return `<div class="row between" style="margin:6px 0 12px"><h2>Fila de produção</h2><span class="muted small">Atualiza sozinha. Toque no pedido para ver detalhes.</span></div><div class="board">${defs.map(([t,sts,c],di)=>{
     const L=O.filter(o=>sts.includes(o.status)).sort((a,b)=>(deadline(a)||9e15)-(deadline(b)||9e15));
-    return `<section class="col" style="border-top:4px solid var(--s-${c})"><header><span>${t}</span><span class="cnt">${L.length}</span></header><div class="cb">${L.map(prodCard).join('')||'<div class="empty small">Vazio</div>'}</div></section>`;
+    return `<section class="col" style="border-top:4px solid var(--s-${c})"><header><span>${t}</span><span class="cnt">${L.length}</span></header><div class="cb">${(di<2?groupedList(L,prodCard):L.map(prodCard).join(''))||'<div class="empty small">Vazio</div>'}</div></section>`;
   }).join('')}</div>`;
 }
 
@@ -424,15 +426,20 @@ function tvTrack(panels){
 }
 const fmtMin=m=>m<60?m+' min':Math.floor(m/60)+'h'+(m%60?p2(m%60):'');
 function tvWhen(dl){ if(dl==null) return {k:'',t:''}; const m=Math.round((dl-now())/60000); return m<0?{k:'late',t:'Atrasado '+fmtMin(-m)}:m<90?{k:'soon',t:'em '+fmtMin(m)}:{k:'',t:'no prazo'}; }
-function tvCard(o,c,pi){
+function tvCard(o,c,pi,big){
   const fx=tvFx[o.id+'|'+pi], el=fx?now()-fx.at:0, dl=deadline(o), w=tvWhen(dl), on=fx&&el<8000;
   const its=(o.items||[]).filter(i=>!i.direct);
   const rows=its.length?its.map(i=>`<div class="it"><em>${esc(i.qty)}×</em>${esc(i.name)}${i.desc?`<span class="d">${esc(i.desc)}</span>`:''}</div>`).join(''):`<div class="it">${esc(prodItemsText(o))}</div>`;
   const flag=o.status==='aguardando_material'?'Falta material':o.status==='bloqueado'?'Bloqueado':'';
   const ph=o.photos&&o.photos.length?`<img class="ph" src="${esc(photoURL(o.photos[0].id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(o.photos[0].id))}">`:'';
-  return `<article class="tvi ${w.k} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
-    <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
+  return `<article class="tvi ${w.k} ${big?'big':''} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
+    <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}${o.date&&o.date!==todayKey()?' · '+fDS(o.date):''}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
     <div class="tvb">${rows}${flag?`<span class="flag">${flag}</span>`:''}${o.buildNotes?`<p class="nt">Montagem: ${esc(o.buildNotes)}</p>`:''}</div>${ph}</article>`;
+}
+function tvListHTML(L,c,pi){
+  let bigN=0; const big=new Set(L.filter(o=>o.photos&&o.photos.length).slice(0,2).map(o=>o.id));
+  const f=o=>tvCard(o,c,pi,big.has(o.id));
+  return pi<2?groupedList(L,f):L.map(f).join('');
 }
 function viewTV(){
   const O=arr('orders').filter(o=>PIPE.includes(o.status)&&isActive(o));
@@ -445,7 +452,7 @@ function viewTV(){
     <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
     <div class="tvclock"><b id="tvclock"></b><span id="tvdate"></span></div>
     ${ctl?`<div class="tvctl"><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button><button class="tvbtn tvic" id="tvsnd" data-act="tv-snd"></button></div>`:''}</div>
-    <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${L.map(o=>tvCard(o,c,pi)).join('')||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
+    <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${tvListHTML(L,c,pi)||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
 }
 let tvCtx=null, tvSnd=(lsGet('salem.tvsound')!=='off');
 function tvAudio(){ try{ if(!tvCtx){ const A=window.AudioContext||window.webkitAudioContext; if(!A) return null; tvCtx=new A(); } if(tvCtx.state==='suspended'&&tvCtx.resume) tvCtx.resume(); return tvCtx; }catch(e){ return null; } }

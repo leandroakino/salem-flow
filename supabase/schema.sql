@@ -82,7 +82,9 @@ begin
     select jsonb_agg(jsonb_build_object(
       'id', o.id, 'num', o.data->'num', 'status', o.data->'status', 'statusAt', o.data->'statusAt',
       'type', o.data->'type', 'date', o.data->'date', 'time', o.data->'time', 'noTime', o.data->'noTime',
-      'items', (select coalesce(jsonb_agg(jsonb_build_object('name', i->'name', 'qty', i->'qty')), '[]'::jsonb) from jsonb_array_elements(coalesce(o.data->'items','[]'::jsonb)) i)))
+      'urgent', o.data->'urgent', 'skipProd', o.data->'skipProd', 'buildNotes', o.data->'buildNotes',
+      'photos', (select coalesce(jsonb_agg(jsonb_build_object('id', ph->'id')), '[]'::jsonb) from jsonb_array_elements(coalesce(o.data->'photos','[]'::jsonb)) ph),
+      'items', (select coalesce(jsonb_agg(jsonb_build_object('name', i->'name', 'qty', i->'qty', 'desc', i->'desc', 'direct', i->'direct')), '[]'::jsonb) from jsonb_array_elements(coalesce(o.data->'items','[]'::jsonb)) i)))
     from public.orders o
     where o.data->>'status' in ('liberado','aguardando_prod','em_producao','aguardando_material','bloqueado','finalizado','pronto_subir','divergencia')
   ), '[]'::jsonb);

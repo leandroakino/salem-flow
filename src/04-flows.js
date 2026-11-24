@@ -180,10 +180,10 @@ function receiveDialog(o){
   openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>Conferir ${orderNum(o)}</h2><p class="muted">Confira o que chegou da produção com o pedido.</p>
     <div class="card stack">${(o.items||[]).map(i=>`<div><b>${i.qty}× ${esc(i.name)}</b>${i.desc?`<div class="cardmsg">${esc(i.desc)}</div>`:''}</div>`).join('')}${thumbsHTML(o)}<div class="small muted">Para ${o.time||'sem horário'} · ${fDS(o.date)} · ${TYPES[o.type]}</div></div>
     ${o.card==='sem'?'':`<div class="stack"><h3>Cartão</h3>${o.card==='com'?'':'<div class="radio"><label><input type="radio" name="rc-cs" value="com" checked> Com cartão</label><label><input type="radio" name="rc-cs" value="sem"> Sem cartão</label></div>'}<div id="rc-cardwrap" class="stack"><label class="fld"><span>Mensagem do cartão</span><textarea class="txt" id="rc-msg" style="min-height:60px">${esc(o.cardMsg)}</textarea></label><label class="row"><input type="checkbox" id="rc-3" ${o.cardDone?'checked':''}> Cartão feito e colocado no produto</label></div></div>`}
-    <label class="row"><input type="checkbox" id="rc-1"> O produto confere com o pedido</label><label class="row"><input type="checkbox" id="rc-2"> A quantidade confere</label>
+    <label class="row"><input type="checkbox" id="rc-1"> Conferi: o produto e a quantidade conferem com o pedido</label>
     <div class="row end"><button class="btn" id="rc-x">Cancelar</button><button class="btn danger" id="rc-div">Registrar divergência</button><button class="btn primary" id="rc-ok" disabled>Confirmar recebimento</button></div></div>`);
   const cardSel=()=>o.card==='sem'?'sem':(o.card==='com'?'com':(($('input[name=rc-cs]:checked')||{}).value||'com'));
-  const upd=()=>{ const s=cardSel(), w=$('#rc-cardwrap'); if(w) w.hidden=s==='sem'; const cardOk=s==='sem'||($('#rc-3').checked&&$('#rc-msg').value.trim()!==''); $('#rc-ok').disabled=!($('#rc-1').checked&&$('#rc-2').checked&&cardOk); };
+  const upd=()=>{ const s=cardSel(), w=$('#rc-cardwrap'); if(w) w.hidden=s==='sem'; const cardOk=s==='sem'||($('#rc-3').checked&&$('#rc-msg').value.trim()!==''); $('#rc-ok').disabled=!($('#rc-1').checked&&cardOk); };
   $('.sheet').addEventListener('change',upd); $('.sheet').addEventListener('input',upd); upd(); $('#rc-x').onclick=()=>closeLayer('dlg');
   $('#rc-ok').onclick=()=>run(async()=>{
     const cur=S.orders[o.id]; if(!['pronto_subir','em_transporte'].includes(cur.status)) throw new Error('Este pedido não está mais aguardando recebimento');

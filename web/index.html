@@ -181,6 +181,11 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 .it .d{display:block;font-size:.85em;font-weight:500;color:var(--muted);margin-top:.1em}
 .nt{margin:0;font-size:1em;font-weight:600;color:var(--s-amber);background:rgba(240,180,90,.1);border-radius:.5em;padding:.35em .6em;overflow-wrap:anywhere}
 .flag{align-self:flex-start;font-size:.85em;font-weight:700;color:var(--s-red);border:1px solid var(--s-red);border-radius:999px;padding:.05em .7em}
+.tvi.big .ph{grid-column:1/-1;width:100%;height:13em;border-radius:.7em}
+.tvi.big{border-left-width:.55em}
+.dg{font-size:.78rem;font-weight:700;color:var(--muted);padding:8px 2px 2px}
+.dg.g-late{color:var(--s-red)}.dg.g-today{color:var(--ink)}
+.tvlist .dg{font-size:.95em;flex:none;padding:.3em .2em 0}
 .tvi .ph{width:6.2em;height:6.2em;object-fit:cover;border-radius:.6em;align-self:start;cursor:zoom-in;border:1px solid var(--line)}
 .tvempty{margin:auto;text-align:center;color:var(--muted);padding:2em 1em;font-size:1.05em}
 @keyframes tvIn{from{opacity:0;transform:translateY(-14px) scale(.97)}to{opacity:1;transform:none}}
@@ -277,7 +282,7 @@ window.SALEM_WEB={sb,db,assets,dl,photoURL,url:SUPABASE_URL,key:SUPABASE_KEY,cre
 <script>
 (async function(){
 'use strict';
-const APP_VERSION='1.4';
+const APP_VERSION='1.5';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -562,7 +567,7 @@ function primaryAction(o){
     case 'aguardando_material': return prod?{a:'p-resume',l:'Material chegou, retomar'}:null;
     case 'bloqueado': if(o.block&&o.block.negAuth) return adm?{a:'a-neg',l:'Autorizar estoque negativo'}:null; return prod?{a:'p-resume',l:'Resolvido, retomar'}:null;
     case 'finalizado': return prod?{a:'p-ready',l:'Pronto para subir'}:null;
-    case 'pronto_subir': return (prod||att)?{a:'t-start',l:'Iniciar transporte'}:null;
+    case 'pronto_subir': return att?{a:'r-receive',l:'Receber e conferir'}:null;
     case 'em_transporte': return att?{a:'r-receive',l:'Receber e conferir'}:null;
     case 'divergencia': return prod?{a:'p-fix',l:'Corrigido, reenviar'}:null;
     case 'recebido': if(isDrv()) return o.type==='entrega'?{a:'d-out',l:'Peguei para entregar'}:null; return att?(o.type==='entrega'?{a:'d-out',l:'Saiu para entrega'}:{a:'d-pick',l:'Registrar retirada'}):null;
@@ -577,7 +582,6 @@ function secondary(o){
   if(att&&['liberado','aguardando_prod'].includes(o.status)) a.push({a:'o-direct',l:'Não passa pela produção'});
   if(att&&open&&o.status!=='rascunho'&&o.card!=='sem'&&!o.cardDone) a.push({a:'card-done',l:'Cartão pronto'});
   if(att) a.push({a:'o-dup',l:'Duplicar pedido'});
-  if(prod&&o.status==='liberado') a.push({a:'p-accept',l:'Aceitar na fila'});
   if(prod&&['liberado','aguardando_prod','em_producao'].includes(o.status)) a.push({a:'p-wait',l:'Avisar falta de material'},{a:'p-problem',l:'Informar problema'});
   if(prod&&['em_producao','finalizado'].includes(o.status)&&!o.confReq) a.push({a:'p-confreq',l:'Solicitar conferência'});
   if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-receive',l:'Receber e conferir'});
@@ -596,6 +600,9 @@ function flags(o){
   return f.join('');
 }
 const thumbsHTML=o=>(o.photos&&o.photos.length)?`<div class="thumbs">${o.photos.map(p=>`<img src="${esc(photoURL(p.id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(p.id))}">`).join('')}</div>`:'';
+const dayGroup=o=>{ if(isLate(o)) return 'Atrasados'; if(!o.date) return 'Sem data'; if(o.date===todayKey()) return 'Hoje'; if(o.date===dayKey(now()+864e5)) return 'Amanhã'; return 'Próximos dias'; };
+const DG_CLS={'Atrasados':'g-late','Hoje':'g-today','Amanhã':'g-next','Próximos dias':'g-far','Sem data':'g-far'};
+function groupedList(L,fn){ let last='',out=''; L.forEach(o=>{ const g=dayGroup(o); if(g!==last){ out+=`<div class="dg ${DG_CLS[g]}">${g}</div>`; last=g; } out+=fn(o); }); return out; }
 function prodCard(o){
   const pa=primaryAction(o);
   const descs=(o.items||[]).filter(i=>i.desc).map(i=>`<div class="cardmsg">${esc(i.name)}: ${esc(i.desc)}</div>`).join('');
@@ -745,11 +752,11 @@ function viewPedidos(){
 
 /* ---------- fila de produção ---------- */
 function viewFila(){
-  const defs=[['Novos liberados',['liberado'],'blue'],['Aguardando produção',['aguardando_prod'],'violet'],['Em produção',['em_producao','aguardando_material'],'amber'],['Finalizados',['finalizado'],'teal'],['Prontos para subir',['pronto_subir','em_transporte'],'green'],['Problemas e bloqueios',['bloqueado','divergencia'],'red']];
+  const defs=[['Aguardando produção',['liberado','aguardando_prod'],'violet'],['Em produção',['em_producao','aguardando_material'],'amber'],['Finalizados',['finalizado'],'teal'],['Prontos para subir',['pronto_subir','em_transporte'],'green'],['Problemas e bloqueios',['bloqueado','divergencia'],'red']];
   const O=arr('orders');
-  return `<div class="row between" style="margin:6px 0 12px"><h2>Fila de produção</h2><span class="muted small">Atualiza sozinha. Toque no pedido para ver detalhes.</span></div><div class="board">${defs.map(([t,sts,c])=>{
+  return `<div class="row between" style="margin:6px 0 12px"><h2>Fila de produção</h2><span class="muted small">Atualiza sozinha. Toque no pedido para ver detalhes.</span></div><div class="board">${defs.map(([t,sts,c],di)=>{
     const L=O.filter(o=>sts.includes(o.status)).sort((a,b)=>(deadline(a)||9e15)-(deadline(b)||9e15));
-    return `<section class="col" style="border-top:4px solid var(--s-${c})"><header><span>${t}</span><span class="cnt">${L.length}</span></header><div class="cb">${L.map(prodCard).join('')||'<div class="empty small">Vazio</div>'}</div></section>`;
+    return `<section class="col" style="border-top:4px solid var(--s-${c})"><header><span>${t}</span><span class="cnt">${L.length}</span></header><div class="cb">${(di<2?groupedList(L,prodCard):L.map(prodCard).join(''))||'<div class="empty small">Vazio</div>'}</div></section>`;
   }).join('')}</div>`;
 }
 
@@ -977,15 +984,20 @@ function tvTrack(panels){
 }
 const fmtMin=m=>m<60?m+' min':Math.floor(m/60)+'h'+(m%60?p2(m%60):'');
 function tvWhen(dl){ if(dl==null) return {k:'',t:''}; const m=Math.round((dl-now())/60000); return m<0?{k:'late',t:'Atrasado '+fmtMin(-m)}:m<90?{k:'soon',t:'em '+fmtMin(m)}:{k:'',t:'no prazo'}; }
-function tvCard(o,c,pi){
+function tvCard(o,c,pi,big){
   const fx=tvFx[o.id+'|'+pi], el=fx?now()-fx.at:0, dl=deadline(o), w=tvWhen(dl), on=fx&&el<8000;
   const its=(o.items||[]).filter(i=>!i.direct);
   const rows=its.length?its.map(i=>`<div class="it"><em>${esc(i.qty)}×</em>${esc(i.name)}${i.desc?`<span class="d">${esc(i.desc)}</span>`:''}</div>`).join(''):`<div class="it">${esc(prodItemsText(o))}</div>`;
   const flag=o.status==='aguardando_material'?'Falta material':o.status==='bloqueado'?'Bloqueado':'';
   const ph=o.photos&&o.photos.length?`<img class="ph" src="${esc(photoURL(o.photos[0].id))}" alt="Foto de referência" data-act="photo-zoom" data-src="${esc(photoURL(o.photos[0].id))}">`:'';
-  return `<article class="tvi ${w.k} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
-    <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
+  return `<article class="tvi ${w.k} ${big?'big':''} ${on?'fx-'+fx.k:''}" ${on?`style="animation-delay:${-el}ms,${600-el}ms"`:''} data-act="o-open" data-id="${o.id}">${on?`<span class="tvtag">${fx.k==='new'?'NOVO':'MOVIDO'}</span>`:''}
+    <div class="tvh"><span><span class="n">${orderNum(o)}</span><span class="ty">${o.type==='entrega'?'Entrega':'Retirada'}${o.date&&o.date!==todayKey()?' · '+fDS(o.date):''}</span></span><span class="tvt"><b>${esc(o.time||'--:--')}</b><small data-dl="${dl==null?'':dl}">${w.t}</small></span></div>
     <div class="tvb">${rows}${flag?`<span class="flag">${flag}</span>`:''}${o.buildNotes?`<p class="nt">Montagem: ${esc(o.buildNotes)}</p>`:''}</div>${ph}</article>`;
+}
+function tvListHTML(L,c,pi){
+  let bigN=0; const big=new Set(L.filter(o=>o.photos&&o.photos.length).slice(0,2).map(o=>o.id));
+  const f=o=>tvCard(o,c,pi,big.has(o.id));
+  return pi<2?groupedList(L,f):L.map(f).join('');
 }
 function viewTV(){
   const O=arr('orders').filter(o=>PIPE.includes(o.status)&&isActive(o));
@@ -998,7 +1010,7 @@ function viewTV(){
     <div class="tvkpi"><span class="kpi k-late ${late?'on':''}"><b>${late}</b>atrasados</span><span class="kpi k-soon ${soon?'on':''}"><b>${soon}</b>perto do prazo</span><span class="kpi"><b>${O.length}</b>no fluxo</span>${stale?'<span class="tvsync">Sem conexão: dados podem estar desatualizados</span>':''}</div>
     <div class="tvclock"><b id="tvclock"></b><span id="tvdate"></span></div>
     ${ctl?`<div class="tvctl"><button class="tvbtn" data-act="tv-full">Tela cheia</button><button class="tvbtn" data-act="nav" data-v="${NAV[R()][0]}">Sair do painel</button><button class="tvbtn tvic" id="tvsnd" data-act="tv-snd"></button></div>`:''}</div>
-    <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${L.map(o=>tvCard(o,c,pi)).join('')||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
+    <div class="tvcols">${panels.map(([t,c,L],pi)=>`<section class="tvcol" style="--c:var(--s-${c})"><div class="tvch"><i></i><h3>${t}</h3><span class="ct">${L.length}</span></div><div class="tvlist">${tvListHTML(L,c,pi)||'<div class="tvempty">Nenhum pedido nesta etapa</div>'}</div></section>`).join('')}</div></div>`;
 }
 let tvCtx=null, tvSnd=(lsGet('salem.tvsound')!=='off');
 function tvAudio(){ try{ if(!tvCtx){ const A=window.AudioContext||window.webkitAudioContext; if(!A) return null; tvCtx=new A(); } if(tvCtx.state==='suspended'&&tvCtx.resume) tvCtx.resume(); return tvCtx; }catch(e){ return null; } }
@@ -1204,10 +1216,10 @@ function receiveDialog(o){
   openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>Conferir ${orderNum(o)}</h2><p class="muted">Confira o que chegou da produção com o pedido.</p>
     <div class="card stack">${(o.items||[]).map(i=>`<div><b>${i.qty}× ${esc(i.name)}</b>${i.desc?`<div class="cardmsg">${esc(i.desc)}</div>`:''}</div>`).join('')}${thumbsHTML(o)}<div class="small muted">Para ${o.time||'sem horário'} · ${fDS(o.date)} · ${TYPES[o.type]}</div></div>
     ${o.card==='sem'?'':`<div class="stack"><h3>Cartão</h3>${o.card==='com'?'':'<div class="radio"><label><input type="radio" name="rc-cs" value="com" checked> Com cartão</label><label><input type="radio" name="rc-cs" value="sem"> Sem cartão</label></div>'}<div id="rc-cardwrap" class="stack"><label class="fld"><span>Mensagem do cartão</span><textarea class="txt" id="rc-msg" style="min-height:60px">${esc(o.cardMsg)}</textarea></label><label class="row"><input type="checkbox" id="rc-3" ${o.cardDone?'checked':''}> Cartão feito e colocado no produto</label></div></div>`}
-    <label class="row"><input type="checkbox" id="rc-1"> O produto confere com o pedido</label><label class="row"><input type="checkbox" id="rc-2"> A quantidade confere</label>
+    <label class="row"><input type="checkbox" id="rc-1"> Conferi: o produto e a quantidade conferem com o pedido</label>
     <div class="row end"><button class="btn" id="rc-x">Cancelar</button><button class="btn danger" id="rc-div">Registrar divergência</button><button class="btn primary" id="rc-ok" disabled>Confirmar recebimento</button></div></div>`);
   const cardSel=()=>o.card==='sem'?'sem':(o.card==='com'?'com':(($('input[name=rc-cs]:checked')||{}).value||'com'));
-  const upd=()=>{ const s=cardSel(), w=$('#rc-cardwrap'); if(w) w.hidden=s==='sem'; const cardOk=s==='sem'||($('#rc-3').checked&&$('#rc-msg').value.trim()!==''); $('#rc-ok').disabled=!($('#rc-1').checked&&$('#rc-2').checked&&cardOk); };
+  const upd=()=>{ const s=cardSel(), w=$('#rc-cardwrap'); if(w) w.hidden=s==='sem'; const cardOk=s==='sem'||($('#rc-3').checked&&$('#rc-msg').value.trim()!==''); $('#rc-ok').disabled=!($('#rc-1').checked&&cardOk); };
   $('.sheet').addEventListener('change',upd); $('.sheet').addEventListener('input',upd); upd(); $('#rc-x').onclick=()=>closeLayer('dlg');
   $('#rc-ok').onclick=()=>run(async()=>{
     const cur=S.orders[o.id]; if(!['pronto_subir','em_transporte'].includes(cur.status)) throw new Error('Este pedido não está mais aguardando recebimento');
@@ -1675,7 +1687,7 @@ async function nextNum(){ const r=await sb.rpc('next_order_number'); if(r.error|
    não importa de qual aparelho veio o toque. Precisa do Chrome aberto com --kiosk-printing
    (os atalhos prontos estão na pasta estacoes/).
      ?estacao=cima   -> imprime quando um pedido é LIBERADO (atendimento, em cima)
-     ?estacao=baixo  -> imprime quando a PRODUÇÃO INICIA o pedido (embaixo)
+     ?estacao=baixo  -> imprime quando o pedido é LIBERADO (embaixo, produção); reimprime se alterado e avisa se cancelado
      ?estacao=off    -> desliga
    ==================================================================== */
 let STATION='', stLast='', stSkipped=0;
@@ -1689,18 +1701,47 @@ function stationInit(){
 function stationPill(){
   let el=$('#estacao'); if(!STATION){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div'); el.id='estacao'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:44;background:#12432D;color:#fff;font:12px/1.3 system-ui,sans-serif;padding:6px 10px;border-radius:8px;opacity:.92;max-width:70vw'; document.body.appendChild(el); }
-  el.textContent='Impressão automática: '+(STATION==='cima'?'liberação (atendimento)':'início da produção')+(me?'':' · faça login')+(stLast?' · última: '+stLast:'')+(stSkipped?' · '+stSkipped+' antigo(s) ignorado(s)':'');
+  el.textContent='Impressão automática: '+(STATION==='cima'?'liberação (atendimento)':'liberação do pedido (produção)')+(me?'':' · faça login')+(stLast?' · última: '+stLast:'')+(stSkipped?' · '+stSkipped+' antigo(s) ignorado(s)':'');
 }
+const ST_PROD=['liberado','aguardando_prod','em_producao','aguardando_material','bloqueado'];
+const ST_WINDOW_PROD=24*60*60*1000; // embaixo: imprime tudo que ficou pendente nas últimas 24 h (ex.: computador estava desligado)
 function stationScan(){
   if(!STATION||!me||!loaded.orders||webBusy) return;
-  const t=now(), kind=STATION==='cima'?'lib':'prod';
+  const t=now();
   for(const o of arr('orders')){
-    const at=kind==='lib'?(o.status==='liberado'&&!o.skipProd?(o.times||{}).liberadoAt:0):(o.status==='em_producao'?(o.times||{}).inicioAt:0);
-    if(!at||(o.printed&&o.printed[kind])||stBusy.has(o.id+kind)) continue;
-    if(t-at>ST_WINDOW){ continue; }
-    stBusy.add(o.id+kind); run(()=>stationJob(o,kind));
+    const pr=o.printed||{};
+    if(STATION==='cima'){
+      const at=(o.status==='liberado'&&!o.skipProd)?(o.times||{}).liberadoAt:0;
+      if(at&&!pr.lib&&t-at<=ST_WINDOW&&!stBusy.has(o.id+'lib')){ stBusy.add(o.id+'lib'); run(()=>stationJob(o,'lib')); }
+    }else{
+      const lib=(o.times||{}).liberadoAt||(o.times||{}).inicioAt||0;
+      // ficha de baixo sai na liberação (e de novo se o pedido for alterado depois)
+      if(!o.skipProd&&ST_PROD.includes(o.status)&&lib){
+        const first=!pr.prod?lib:0, alt=(pr.prod&&o.changedAt&&o.changedAt>pr.prod)?o.changedAt:0, at=first||alt;
+        if(at&&t-at<=ST_WINDOW_PROD&&!stBusy.has(o.id+'prod'+at)){ stBusy.add(o.id+'prod'+at); run(()=>stationJob(o,'prod')); }
+      }
+      // aviso de cancelamento: só se a ficha de baixo já tinha saído
+      if(o.status==='cancelado'&&pr.prod&&!pr.cancel&&t-(o.statusAt||0)<=ST_WINDOW_PROD&&!stBusy.has(o.id+'cancel')){ stBusy.add(o.id+'cancel'); run(()=>stationCancel(o)); }
+    }
   }
 }
+async function stationCancel(o){
+  await patch('orders',o.id,{printed:{...(o.printed||{}),cancel:now()}});
+  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Cancelado '+orderNum(o)+'</title><style>'+SLIP_CSS+'</style></head><body><div class="slip"><div class="s-h">SALEM FLORICULTURA</div><div class="s-b">*** PEDIDO CANCELADO ***</div><div class="s-n">'+orderNum(o)+'</div><div class="s-v s-big" style="text-align:center">NAO FAZER</div><div class="s-f">Descarte a ficha deste pedido<br>e retire do quadro.</div><div class="s-f small">'+fT(now())+'</div></div><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>';
+  const f=document.createElement('iframe'); f.style.cssText='position:fixed;width:0;height:0;border:0;visibility:hidden'; f.srcdoc=html; document.body.appendChild(f); setTimeout(()=>f.remove(),20000);
+  stLast='cancelado '+orderNum(o)+' às '+fT(now());
+}
+/* aviso de pedido novo na tela da produção (som + mensagem), para quem trabalha logado como produção */
+let seenLib=null;
+function newOrderWatch(){
+  if(!me||!loaded.orders||webBusy||!(me.role==='producao'||STATION==='baixo')){ return; }
+  const ids=new Set(arr('orders').filter(o=>!o.skipProd&&ST_PROD.includes(o.status)).map(o=>o.id));
+  if(seenLib===null){ seenLib=ids; return; }
+  const fresh=[...ids].filter(id=>!seenLib.has(id));
+  seenLib=ids;
+  if(fresh.length){ fresh.forEach(id=>{ const o=S.orders[id]; if(o) toast('Novo pedido '+orderNum(o)); }); try{ tvAudio(); const prev=tvSnd; tvSnd=true; tvChime(); tvSnd=prev; }catch(e){} }
+}
+setInterval(newOrderWatch,3000);
 async function stationJob(o,kind){
   // marca como impresso ANTES de imprimir, para nunca sair duas vezes (mesmo se a página recarregar)
   await patch('orders',o.id,{printed:{...(o.printed||{}),[kind]:now()}});

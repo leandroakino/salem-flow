@@ -101,9 +101,11 @@ const mock = `
     if (!s['orders/o0001'].times.finalizadoAt || !s['orders/o0001'].times.prontoAt) throw new Error('tempos');
   });
   await step('pronto, transporte (sem "concluir transporte")', async () => {
-    await btn('Iniciar transporte').click();
-    await page.waitForFunction(() => window.__store['orders/o0001'].status === 'em_transporte');
+    if (await page.getByRole('button', { name: 'Iniciar transporte' }).count()) throw new Error('produção não deve precisar iniciar transporte');
     if (await page.getByRole('button', { name: 'Concluir transporte' }).count()) throw new Error('ainda existe concluir transporte');
+    await login('Atendimento 1'); await page.locator('.tab', { hasText: 'Receber' }).click();
+    if (!(await page.getByRole('button', { name: 'Receber e conferir' }).count())) throw new Error('atendimento deve receber direto, sem iniciar transporte');
+    await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click();
   });
   await step('divergência no recebimento bloqueia conclusão', async () => {
     await login('Atendimento 1'); await btn('Receber', true).first().click().catch(()=>{});
@@ -121,14 +123,12 @@ const mock = `
     await login('Produção');
     await btn('Corrigido, reenviar').click();
     await page.waitForFunction(() => window.__store['orders/o0001'].status === 'pronto_subir');
-    await btn('Iniciar transporte').click();
-    await page.waitForFunction(() => window.__store['orders/o0001'].status === 'em_transporte');
   });
   await step('recebimento ok e retirada', async () => {
     await login('Atendimento 1'); await page.locator('.tab', { hasText: 'Receber' }).click();
     await page.fill('#rcv-num', '1'); await btn('Conferir pedido').click();
     await page.waitForSelector('#rc-ok');
-    await page.locator('#rc-1').check(); await page.locator('#rc-2').check();
+    await page.locator('#rc-1').check();
     if (!(await page.locator('#rc-ok').isDisabled())) throw new Error('liberou sem conferir o cartão');
     await page.locator('#rc-3').check();
     await page.locator('#rc-ok').click();
@@ -139,7 +139,7 @@ const mock = `
     await btn('Concluir retirada').click();
     await page.waitForFunction(() => window.__store['orders/o0001'].status === 'concluido');
     const s = await store(); const o = s['orders/o0001'];
-    if (o.history.length < 10) throw new Error('histórico curto ' + o.history.length);
+    if (o.history.length < 8) throw new Error('histórico curto ' + o.history.length);
     const baixas = Object.values(s).filter(d => d.type === 'baixa_pedido');
     if (baixas.length !== 0) throw new Error('baixas=' + baixas.length);
   });
@@ -182,7 +182,6 @@ const mock = `
     if (!(await page.locator('#plist .col header', { hasText: 'Finalizados' }).count())) throw new Error('sem seção Finalizados');
     await page.locator('.ocard', { hasText: '#0002' }).first().click();
     await page.waitForSelector('.drawer');
-    await page.locator('.drawer').getByRole('button', { name: 'Iniciar transporte' }).click();
     await page.waitForFunction(() => document.querySelector('.drawer') && document.querySelector('.drawer').innerText.includes('Receber e conferir'));
   });
   await step('aba Materiais: avisar, providenciar, receber', async () => {

@@ -137,7 +137,7 @@ async function nextNum(){ const r=await sb.rpc('next_order_number'); if(r.error|
    não importa de qual aparelho veio o toque. Precisa do Chrome aberto com --kiosk-printing
    (os atalhos prontos estão na pasta estacoes/).
      ?estacao=cima   -> imprime quando um pedido é LIBERADO (atendimento, em cima)
-     ?estacao=baixo  -> imprime quando a PRODUÇÃO INICIA o pedido (embaixo)
+     ?estacao=baixo  -> imprime quando o pedido é LIBERADO (embaixo, produção); reimprime se alterado e avisa se cancelado
      ?estacao=off    -> desliga
    ==================================================================== */
 let STATION='', stLast='', stSkipped=0;
@@ -151,18 +151,47 @@ function stationInit(){
 function stationPill(){
   let el=$('#estacao'); if(!STATION){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div'); el.id='estacao'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:44;background:#12432D;color:#fff;font:12px/1.3 system-ui,sans-serif;padding:6px 10px;border-radius:8px;opacity:.92;max-width:70vw'; document.body.appendChild(el); }
-  el.textContent='Impressão automática: '+(STATION==='cima'?'liberação (atendimento)':'início da produção')+(me?'':' · faça login')+(stLast?' · última: '+stLast:'')+(stSkipped?' · '+stSkipped+' antigo(s) ignorado(s)':'');
+  el.textContent='Impressão automática: '+(STATION==='cima'?'liberação (atendimento)':'liberação do pedido (produção)')+(me?'':' · faça login')+(stLast?' · última: '+stLast:'')+(stSkipped?' · '+stSkipped+' antigo(s) ignorado(s)':'');
 }
+const ST_PROD=['liberado','aguardando_prod','em_producao','aguardando_material','bloqueado'];
+const ST_WINDOW_PROD=24*60*60*1000; // embaixo: imprime tudo que ficou pendente nas últimas 24 h (ex.: computador estava desligado)
 function stationScan(){
   if(!STATION||!me||!loaded.orders||webBusy) return;
-  const t=now(), kind=STATION==='cima'?'lib':'prod';
+  const t=now();
   for(const o of arr('orders')){
-    const at=kind==='lib'?(o.status==='liberado'&&!o.skipProd?(o.times||{}).liberadoAt:0):(o.status==='em_producao'?(o.times||{}).inicioAt:0);
-    if(!at||(o.printed&&o.printed[kind])||stBusy.has(o.id+kind)) continue;
-    if(t-at>ST_WINDOW){ continue; }
-    stBusy.add(o.id+kind); run(()=>stationJob(o,kind));
+    const pr=o.printed||{};
+    if(STATION==='cima'){
+      const at=(o.status==='liberado'&&!o.skipProd)?(o.times||{}).liberadoAt:0;
+      if(at&&!pr.lib&&t-at<=ST_WINDOW&&!stBusy.has(o.id+'lib')){ stBusy.add(o.id+'lib'); run(()=>stationJob(o,'lib')); }
+    }else{
+      const lib=(o.times||{}).liberadoAt||(o.times||{}).inicioAt||0;
+      // ficha de baixo sai na liberação (e de novo se o pedido for alterado depois)
+      if(!o.skipProd&&ST_PROD.includes(o.status)&&lib){
+        const first=!pr.prod?lib:0, alt=(pr.prod&&o.changedAt&&o.changedAt>pr.prod)?o.changedAt:0, at=first||alt;
+        if(at&&t-at<=ST_WINDOW_PROD&&!stBusy.has(o.id+'prod'+at)){ stBusy.add(o.id+'prod'+at); run(()=>stationJob(o,'prod')); }
+      }
+      // aviso de cancelamento: só se a ficha de baixo já tinha saído
+      if(o.status==='cancelado'&&pr.prod&&!pr.cancel&&t-(o.statusAt||0)<=ST_WINDOW_PROD&&!stBusy.has(o.id+'cancel')){ stBusy.add(o.id+'cancel'); run(()=>stationCancel(o)); }
+    }
   }
 }
+async function stationCancel(o){
+  await patch('orders',o.id,{printed:{...(o.printed||{}),cancel:now()}});
+  const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Cancelado '+orderNum(o)+'</title><style>'+SLIP_CSS+'</style></head><body><div class="slip"><div class="s-h">SALEM FLORICULTURA</div><div class="s-b">*** PEDIDO CANCELADO ***</div><div class="s-n">'+orderNum(o)+'</div><div class="s-v s-big" style="text-align:center">NAO FAZER</div><div class="s-f">Descarte a ficha deste pedido<br>e retire do quadro.</div><div class="s-f small">'+fT(now())+'</div></div><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>';
+  const f=document.createElement('iframe'); f.style.cssText='position:fixed;width:0;height:0;border:0;visibility:hidden'; f.srcdoc=html; document.body.appendChild(f); setTimeout(()=>f.remove(),20000);
+  stLast='cancelado '+orderNum(o)+' às '+fT(now());
+}
+/* aviso de pedido novo na tela da produção (som + mensagem), para quem trabalha logado como produção */
+let seenLib=null;
+function newOrderWatch(){
+  if(!me||!loaded.orders||webBusy||!(me.role==='producao'||STATION==='baixo')){ return; }
+  const ids=new Set(arr('orders').filter(o=>!o.skipProd&&ST_PROD.includes(o.status)).map(o=>o.id));
+  if(seenLib===null){ seenLib=ids; return; }
+  const fresh=[...ids].filter(id=>!seenLib.has(id));
+  seenLib=ids;
+  if(fresh.length){ fresh.forEach(id=>{ const o=S.orders[id]; if(o) toast('Novo pedido '+orderNum(o)); }); try{ tvAudio(); const prev=tvSnd; tvSnd=true; tvChime(); tvSnd=prev; }catch(e){} }
+}
+setInterval(newOrderWatch,3000);
 async function stationJob(o,kind){
   // marca como impresso ANTES de imprimir, para nunca sair duas vezes (mesmo se a página recarregar)
   await patch('orders',o.id,{printed:{...(o.printed||{}),[kind]:now()}});
