@@ -138,26 +138,25 @@ async function nextNum(){ const r=await sb.rpc('next_order_number'); if(r.error|
    (os atalhos prontos estão na pasta estacoes/).
      ?estacao=cima   -> imprime quando um pedido é LIBERADO (atendimento, em cima)
      ?estacao=baixo  -> imprime quando a PRODUÇÃO INICIA o pedido (embaixo)
-     ?estacao=tudo   -> imprime nos dois momentos (um computador so, com a impressora)
      ?estacao=off    -> desliga
    ==================================================================== */
 let STATION='', stLast='', stSkipped=0;
 const ST_WINDOW=10*60*1000; // só imprime o que aconteceu nos últimos 10 min (não reimprime pedidos antigos ao ligar)
 const stBusy=new Set();
 function stationInit(){
-  try{ const q=new URLSearchParams(location.search).get('estacao'); if(q!==null){ lsSet('salem.station',q==='cima'||q==='baixo'||q==='tudo'?q:''); history.replaceState(null,'',location.pathname+location.hash); } }catch(e){}
+  try{ const q=new URLSearchParams(location.search).get('estacao'); if(q!==null){ lsSet('salem.station',q==='cima'||q==='baixo'?q:''); history.replaceState(null,'',location.pathname+location.hash); } }catch(e){}
   STATION=lsGet('salem.station')||'';
   if(STATION){ setInterval(stationScan,2000); setInterval(stationPill,1000); }
 }
 function stationPill(){
   let el=$('#estacao'); if(!STATION){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div'); el.id='estacao'; el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:44;background:#12432D;color:#fff;font:12px/1.3 system-ui,sans-serif;padding:6px 10px;border-radius:8px;opacity:.92;max-width:70vw'; document.body.appendChild(el); }
-  el.textContent='Impressão automática: '+(STATION==='cima'?'liberação (atendimento)':STATION==='tudo'?'liberação + início da produção':'início da produção')+(me?'':' · faça login')+(stLast?' · última: '+stLast:'')+(stSkipped?' · '+stSkipped+' antigo(s) ignorado(s)':'');
+  el.textContent='Impressão automática: '+(STATION==='cima'?'liberação (atendimento)':'início da produção')+(me?'':' · faça login')+(stLast?' · última: '+stLast:'')+(stSkipped?' · '+stSkipped+' antigo(s) ignorado(s)':'');
 }
 function stationScan(){
   if(!STATION||!me||!loaded.orders||webBusy) return;
-  const t=now(), kinds=STATION==='cima'?['lib']:STATION==='baixo'?['prod']:['lib','prod'];
-  for(const o of arr('orders')) for(const kind of kinds){
+  const t=now(), kind=STATION==='cima'?'lib':'prod';
+  for(const o of arr('orders')){
     const at=kind==='lib'?(o.status==='liberado'&&!o.skipProd?(o.times||{}).liberadoAt:0):(o.status==='em_producao'?(o.times||{}).inicioAt:0);
     if(!at||(o.printed&&o.printed[kind])||stBusy.has(o.id+kind)) continue;
     if(t-at>ST_WINDOW){ continue; }
@@ -179,5 +178,4 @@ function stationPrint(o){
     setTimeout(()=>{ f.remove(); res(); },20000);
   });
 }
-window.printSlipNow=async o=>{ await stationPrint(o); toast('Ficha enviada para a impressora'); };
 H['est-teste']=async()=>{ const o=arr('orders').sort((a,b)=>(b.num||0)-(a.num||0))[0]; if(!o) throw new Error('Ainda não há pedidos para imprimir um teste'); await stationPrint(o); toast('Ficha de teste enviada para a impressora'); };

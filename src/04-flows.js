@@ -346,11 +346,10 @@ function fichaBar(o){
   fbT=setTimeout(hide,30000);
 }
 function openFicha(o,note){
-  openLayer('dlg',`<div class="sheet small"><h2>Ficha ${orderNum(o)}</h2><p class="muted small">${note||'Ficha com todas as informações do pedido, sem valores. Papel de 80 mm.'}</p>${slipHTML(o)}<div class="row end" style="flex-wrap:wrap"><button class="btn" id="fch-c">Copiar texto</button>${window.SALEM_WEB?'<button class="btn primary" id="fch-p">Imprimir agora</button>':''}<button class="btn" id="fch-d">Baixar para imprimir</button><button class="btn" id="fch-x">Fechar</button></div><p class="muted small">Baixar para imprimir: abra o arquivo baixado e o navegador já abre a impressão em 80 mm. </p></div>`);
+  openLayer('dlg',`<div class="sheet small"><h2>Ficha ${orderNum(o)}</h2><p class="muted small">${note||'Ficha com todas as informações do pedido, sem valores. Papel de 80 mm.'}</p>${slipHTML(o)}<div class="row end" style="flex-wrap:wrap"><button class="btn" id="fch-c">Copiar texto</button><button class="btn primary" id="fch-d">Baixar para imprimir</button><button class="btn" id="fch-x">Fechar</button></div><p class="muted small">Baixar para imprimir: abra o arquivo baixado e o navegador já abre a impressão em 80 mm. A impressão automática, sem clicar, entra na versão definitiva.</p></div>`);
   try{ if(window.JsBarcode) window.JsBarcode('#slip-bc',String(o.num).padStart(4,'0'),{format:'CODE128',width:2,height:44,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'}); }catch(e){}
   $('#fch-x').onclick=()=>closeLayer('dlg');
   $('#fch-d').onclick=()=>downloadFicha(o);
-  if($('#fch-p')) $('#fch-p').onclick=()=>run(async()=>{ await window.printSlipNow(o); });
   $('#fch-c').onclick=async()=>{ try{ await navigator.clipboard.writeText(fichaText(o)); toast('Ficha copiada'); }catch(e){ const r=document.createRange(); r.selectNodeContents($('#slip')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('Selecionei o texto. Use copiar do seu aparelho.'); } };
 }
 async function waitOrder(id){ for(let k=0;k<40&&!S.orders[id];k++) await new Promise(r=>setTimeout(r,50)); return S.orders[id]; }
