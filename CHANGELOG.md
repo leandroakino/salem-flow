@@ -3,7 +3,7 @@
 Cada atualização publicada ganha um número e fica registrada aqui com o commit correspondente. A versão aparece na tela de login e no menu do usuário.
 Para voltar a uma versão: `git checkout <commit>` (ou peça ao Claude: "voltar para a v1.2").
 
-## v1.9
+## v1.9 (commit f99aecd)
 - Entrega em 1 clique: "Confirmar entrega" (atendimento) e "Entreguei" (entregador) concluem direto, registrando o destinatário do pedido como quem recebeu.
 - Novo botão "Entregue a outra pessoa" ao lado, que pergunta o nome de quem recebeu.
 
