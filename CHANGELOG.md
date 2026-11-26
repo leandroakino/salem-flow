@@ -3,7 +3,7 @@
 Cada atualização publicada ganha um número e fica registrada aqui com o commit correspondente. A versão aparece na tela de login e no menu do usuário.
 Para voltar a uma versão: `git checkout <commit>` (ou peça ao Claude: "voltar para a v1.2").
 
-## v1.7
+## v1.7 (commit 153e0e9)
 - Volta ao túnel /sb (igual à v1.5 na conexão). Medição: túnel ~70 ms mais rápido e mais estável que o direto.
 
 ## v1.6 (commit 41c77fb)
