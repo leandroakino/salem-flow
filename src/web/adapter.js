@@ -1,7 +1,7 @@
 <script>
 /* Salém Flow — adaptador Supabase: oferece ao sistema a mesma interface (db/assets/dl) usada na versão de teste. */
 (function(){
-const SUPABASE_URL='https://ckdxemisvchffwkmqvyv.supabase.co'; // conexão direta (o túnel functions/sb continua disponível, sem uso, caso alguma rede bloqueie o supabase.co)
+const SUPABASE_URL=location.origin+'/sb'; // passa pelo túnel do próprio site (functions/sb): mais rápido e funciona em redes que bloqueiam o supabase.co
 const SUPABASE_KEY='sb_publishable_WcBIbNv6K8p07Yn3hn0PzQ__Rqns3bP'; // chave pública (feita para ficar no navegador); a segurança está nas regras (RLS) do banco
 if(!window.supabase){ window.SALEM_WEB={failed:true}; return; }
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
