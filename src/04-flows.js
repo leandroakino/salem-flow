@@ -176,6 +176,20 @@ LY('form').addEventListener('change',async e=>{
 });
 
 /* ---------- recebimento e conferência ---------- */
+async function divergenceDialog(o){
+
+    const v=await ask({title:'Registrar divergência',note:'O pedido volta para a fila de correção da produção.',danger:true,ok:'Registrar divergência',fields:[{id:'type',label:'O que aconteceu?',type:'select',options:Object.entries(DIVT).map(([v,l])=>({v,l}))},{id:'note',label:'Detalhes',type:'textarea',required:true}]});
+    if(!v) return;
+    const cur=S.orders[o.id];
+    await oact(cur,{status:'divergencia',divOpen:true,div:{type:v.type,label:DIVT[v.type],note:v.note,by:me.name,at:now()},divCount:(cur.divCount||0)+1},'Divergência registrada',DIVT[v.type]+'. '+v.note);
+    closeLayer('dlg'); toast('Pedido enviado para correção');
+}
+async function receiveNow(o){
+  const cur=S.orders[o.id]; if(!cur||!['pronto_subir','em_transporte'].includes(cur.status)) throw new Error('Este pedido não está mais aguardando recebimento');
+  const tr=cur.transport||{};
+  await oact(cur,{status:'recebido',divOpen:false,receivedBy:me.name,cardDone:true,times:{recebidoAt:now()},transport:{startedAt:tr.startedAt||now(),startedBy:tr.startedBy||me.name,endedAt:tr.endedAt||now(),endedBy:tr.endedBy||me.name}},'Recebimento confirmado','Recebido e conferido por '+me.name);
+  toast(orderNum(cur)+' recebido no atendimento');
+}
 function receiveDialog(o){
   openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>Conferir ${orderNum(o)}</h2><p class="muted">Confira o que chegou da produção com o pedido.</p>
     <div class="card stack">${(o.items||[]).map(i=>`<div><b>${i.qty}× ${esc(i.name)}</b>${i.desc?`<div class="cardmsg">${esc(i.desc)}</div>`:''}</div>`).join('')}${thumbsHTML(o)}<div class="small muted">Para ${o.time||'sem horário'} · ${fDS(o.date)} · ${TYPES[o.type]}</div></div>
@@ -191,13 +205,7 @@ function receiveDialog(o){
     await oact(cur,{status:'recebido',divOpen:false,receivedBy:me.name,card:cardSel(),cardMsg:cardSel()==='com'?$('#rc-msg').value.trim():'',cardDone:true,times:{recebidoAt:now()},transport:{startedAt:tr.startedAt||now(),startedBy:tr.startedBy||me.name,endedAt:tr.endedAt||now(),endedBy:tr.endedBy||me.name}},'Recebimento conferido','Produto e quantidade conferidos por '+me.name);
     closeLayer('dlg'); toast(orderNum(cur)+' recebido no atendimento');
   });
-  $('#rc-div').onclick=()=>run(async()=>{
-    const v=await ask({title:'Registrar divergência',note:'O pedido volta para a fila de correção da produção.',danger:true,ok:'Registrar divergência',fields:[{id:'type',label:'O que aconteceu?',type:'select',options:Object.entries(DIVT).map(([v,l])=>({v,l}))},{id:'note',label:'Detalhes',type:'textarea',required:true}]});
-    if(!v) return;
-    const cur=S.orders[o.id];
-    await oact(cur,{status:'divergencia',divOpen:true,div:{type:v.type,label:DIVT[v.type],note:v.note,by:me.name,at:now()},divCount:(cur.divCount||0)+1},'Divergência registrada',DIVT[v.type]+'. '+v.note);
-    closeLayer('dlg'); toast('Pedido enviado para correção');
-  });
+  $('#rc-div').onclick=()=>run(()=>divergenceDialog(o));
 }
 
 /* ---------- formulários de cadastro ---------- */
@@ -402,7 +410,9 @@ H['card-done']=async d=>{ const o=ordr(d); const v=await ask({title:'Cartão '+o
 H['p-ready']=d=>oact(ordr(d),{status:'pronto_subir',readyBy:me.name,times:{prontoAt:now()}},'Pronto para subir');
 H['t-start']=d=>oact(ordr(d),{status:'em_transporte',transport:{startedAt:now(),startedBy:me.name,endedAt:null,endedBy:null}},'Transporte iniciado');
 H['r-receive']=d=>receiveDialog(ordr(d));
-H['r-find']=()=>{ const n=Number(digits($('#rcv-num').value)); const o=arr('orders').find(x=>x.num===n); if(!o){ toast('Pedido '+(n||'')+' não encontrado',true); return; } if(!['pronto_subir','em_transporte'].includes(o.status)){ toast(`${orderNum(o)} está em "${stLabel(o)}" e não aguarda recebimento`,true); return; } receiveDialog(o); };
+H['r-now']=d=>receiveNow(ordr(d));
+H['r-div']=d=>divergenceDialog(ordr(d));
+H['r-find']=()=>{ const n=Number(digits($('#rcv-num').value)); const o=arr('orders').find(x=>x.num===n); if(!o){ toast('Pedido '+(n||'')+' não encontrado',true); return; } if(!['pronto_subir','em_transporte'].includes(o.status)){ toast(`${orderNum(o)} está em "${stLabel(o)}" e não aguarda recebimento`,true); return; } return receiveNow(o); };
 H['p-fix']=d=>{ const o=ordr(d); return oact(o,{status:'pronto_subir',divOpen:false,transport:null},'Correção concluída','Pedido reenviado ao atendimento'); };
 function guardCard(o){ if(o.card!=='sem'&&!o.cardDone) throw new Error(isDrv()?'O cartão deste pedido ainda não foi feito. Avise o atendimento.':'O cartão deste pedido ainda não foi feito. Use "Cartão pronto" no pedido.'); }
 function guardConclude(o){ if(o.divOpen) throw new Error('Conclusão bloqueada: há uma divergência em aberto'); }

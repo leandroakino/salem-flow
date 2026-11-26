@@ -9,8 +9,8 @@ function primaryAction(o){
     case 'aguardando_material': return prod?{a:'p-resume',l:'Material chegou, retomar'}:null;
     case 'bloqueado': if(o.block&&o.block.negAuth) return adm?{a:'a-neg',l:'Autorizar estoque negativo'}:null; return prod?{a:'p-resume',l:'Resolvido, retomar'}:null;
     case 'finalizado': return prod?{a:'p-ready',l:'Pronto para subir'}:null;
-    case 'pronto_subir': return att?{a:'r-receive',l:'Receber e conferir'}:null;
-    case 'em_transporte': return att?{a:'r-receive',l:'Receber e conferir'}:null;
+    case 'pronto_subir': return att?{a:'r-now',l:'Confirmar recebimento'}:null;
+    case 'em_transporte': return att?{a:'r-now',l:'Confirmar recebimento'}:null;
     case 'divergencia': return prod?{a:'p-fix',l:'Corrigido, reenviar'}:null;
     case 'recebido': if(isDrv()) return o.type==='entrega'?{a:'d-out',l:'Peguei para entregar'}:null; return att?(o.type==='entrega'?{a:'d-out',l:'Saiu para entrega'}:{a:'d-pick',l:'Registrar retirada'}):null;
     case 'saiu_entrega': return (att||(isDrv()&&mine(o)))?{a:'d-done',l:isDrv()?'Entreguei':'Confirmar entrega'}:null;
@@ -26,7 +26,7 @@ function secondary(o){
   if(att) a.push({a:'o-dup',l:'Duplicar pedido'});
   if(prod&&['liberado','aguardando_prod','em_producao'].includes(o.status)) a.push({a:'p-wait',l:'Avisar falta de material'},{a:'p-problem',l:'Informar problema'});
   if(prod&&['em_producao','finalizado'].includes(o.status)&&!o.confReq) a.push({a:'p-confreq',l:'Solicitar conferência'});
-  if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-receive',l:'Receber e conferir'});
+  if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-div',l:'Registrar divergência'});
   if((att||(isDrv()&&mine(o)))&&o.status==='saiu_entrega') a.push({a:'d-prob',l:'Problema na entrega'});
   a.push({a:'o-ficha',l:'Ficha do pedido'});
   if(att&&open) a.push({a:'o-cancel',l:'Cancelar pedido'});
@@ -206,7 +206,7 @@ function viewFila(){
 function viewReceber(){
   const O=arr('orders'); const trans=O.filter(o=>o.status==='em_transporte'), wait=O.filter(o=>o.status==='pronto_subir'), div=O.filter(o=>o.status==='divergencia');
   const sec=(t,L,empty)=>`<div class="sec"><h2>${t} <span class="muted">(${L.length})</span></h2><div class="list" style="margin-top:10px">${L.map(prodCard).join('')||`<div class="empty">${empty}</div>`}</div></div>`;
-  return `<h2>Receber da produção</h2><div class="card row" style="margin:10px 0"><label class="fld grow"><span>Número do pedido que chegou</span><input class="inp" id="rcv-num" inputmode="numeric" placeholder="Ex.: 12"></label><button class="btn primary lg" data-act="r-find">Conferir pedido</button></div>
+  return `<h2>Receber da produção</h2><div class="card row" style="margin:10px 0"><label class="fld grow"><span>Número do pedido que chegou</span><input class="inp" id="rcv-num" inputmode="numeric" placeholder="Ex.: 12"></label><button class="btn primary lg" data-act="r-find">Confirmar pelo número</button></div>
     ${sec('A caminho do atendimento',trans,'Nada em transporte.')}${sec('Prontos, aguardando transporte',wait,'Nenhum pedido aguardando.')}${sec('Divergências em correção',div,'Nenhuma divergência aberta.')}`;
 }
 

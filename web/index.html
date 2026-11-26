@@ -282,7 +282,7 @@ window.SALEM_WEB={sb,db,assets,dl,photoURL,url:SUPABASE_URL,key:SUPABASE_KEY,cre
 <script>
 (async function(){
 'use strict';
-const APP_VERSION='1.7';
+const APP_VERSION='1.8';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -567,8 +567,8 @@ function primaryAction(o){
     case 'aguardando_material': return prod?{a:'p-resume',l:'Material chegou, retomar'}:null;
     case 'bloqueado': if(o.block&&o.block.negAuth) return adm?{a:'a-neg',l:'Autorizar estoque negativo'}:null; return prod?{a:'p-resume',l:'Resolvido, retomar'}:null;
     case 'finalizado': return prod?{a:'p-ready',l:'Pronto para subir'}:null;
-    case 'pronto_subir': return att?{a:'r-receive',l:'Receber e conferir'}:null;
-    case 'em_transporte': return att?{a:'r-receive',l:'Receber e conferir'}:null;
+    case 'pronto_subir': return att?{a:'r-now',l:'Confirmar recebimento'}:null;
+    case 'em_transporte': return att?{a:'r-now',l:'Confirmar recebimento'}:null;
     case 'divergencia': return prod?{a:'p-fix',l:'Corrigido, reenviar'}:null;
     case 'recebido': if(isDrv()) return o.type==='entrega'?{a:'d-out',l:'Peguei para entregar'}:null; return att?(o.type==='entrega'?{a:'d-out',l:'Saiu para entrega'}:{a:'d-pick',l:'Registrar retirada'}):null;
     case 'saiu_entrega': return (att||(isDrv()&&mine(o)))?{a:'d-done',l:isDrv()?'Entreguei':'Confirmar entrega'}:null;
@@ -584,7 +584,7 @@ function secondary(o){
   if(att) a.push({a:'o-dup',l:'Duplicar pedido'});
   if(prod&&['liberado','aguardando_prod','em_producao'].includes(o.status)) a.push({a:'p-wait',l:'Avisar falta de material'},{a:'p-problem',l:'Informar problema'});
   if(prod&&['em_producao','finalizado'].includes(o.status)&&!o.confReq) a.push({a:'p-confreq',l:'Solicitar conferência'});
-  if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-receive',l:'Receber e conferir'});
+  if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-div',l:'Registrar divergência'});
   if((att||(isDrv()&&mine(o)))&&o.status==='saiu_entrega') a.push({a:'d-prob',l:'Problema na entrega'});
   a.push({a:'o-ficha',l:'Ficha do pedido'});
   if(att&&open) a.push({a:'o-cancel',l:'Cancelar pedido'});
@@ -764,7 +764,7 @@ function viewFila(){
 function viewReceber(){
   const O=arr('orders'); const trans=O.filter(o=>o.status==='em_transporte'), wait=O.filter(o=>o.status==='pronto_subir'), div=O.filter(o=>o.status==='divergencia');
   const sec=(t,L,empty)=>`<div class="sec"><h2>${t} <span class="muted">(${L.length})</span></h2><div class="list" style="margin-top:10px">${L.map(prodCard).join('')||`<div class="empty">${empty}</div>`}</div></div>`;
-  return `<h2>Receber da produção</h2><div class="card row" style="margin:10px 0"><label class="fld grow"><span>Número do pedido que chegou</span><input class="inp" id="rcv-num" inputmode="numeric" placeholder="Ex.: 12"></label><button class="btn primary lg" data-act="r-find">Conferir pedido</button></div>
+  return `<h2>Receber da produção</h2><div class="card row" style="margin:10px 0"><label class="fld grow"><span>Número do pedido que chegou</span><input class="inp" id="rcv-num" inputmode="numeric" placeholder="Ex.: 12"></label><button class="btn primary lg" data-act="r-find">Confirmar pelo número</button></div>
     ${sec('A caminho do atendimento',trans,'Nada em transporte.')}${sec('Prontos, aguardando transporte',wait,'Nenhum pedido aguardando.')}${sec('Divergências em correção',div,'Nenhuma divergência aberta.')}`;
 }
 
@@ -1212,6 +1212,20 @@ LY('form').addEventListener('change',async e=>{
 });
 
 /* ---------- recebimento e conferência ---------- */
+async function divergenceDialog(o){
+
+    const v=await ask({title:'Registrar divergência',note:'O pedido volta para a fila de correção da produção.',danger:true,ok:'Registrar divergência',fields:[{id:'type',label:'O que aconteceu?',type:'select',options:Object.entries(DIVT).map(([v,l])=>({v,l}))},{id:'note',label:'Detalhes',type:'textarea',required:true}]});
+    if(!v) return;
+    const cur=S.orders[o.id];
+    await oact(cur,{status:'divergencia',divOpen:true,div:{type:v.type,label:DIVT[v.type],note:v.note,by:me.name,at:now()},divCount:(cur.divCount||0)+1},'Divergência registrada',DIVT[v.type]+'. '+v.note);
+    closeLayer('dlg'); toast('Pedido enviado para correção');
+}
+async function receiveNow(o){
+  const cur=S.orders[o.id]; if(!cur||!['pronto_subir','em_transporte'].includes(cur.status)) throw new Error('Este pedido não está mais aguardando recebimento');
+  const tr=cur.transport||{};
+  await oact(cur,{status:'recebido',divOpen:false,receivedBy:me.name,cardDone:true,times:{recebidoAt:now()},transport:{startedAt:tr.startedAt||now(),startedBy:tr.startedBy||me.name,endedAt:tr.endedAt||now(),endedBy:tr.endedBy||me.name}},'Recebimento confirmado','Recebido e conferido por '+me.name);
+  toast(orderNum(cur)+' recebido no atendimento');
+}
 function receiveDialog(o){
   openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>Conferir ${orderNum(o)}</h2><p class="muted">Confira o que chegou da produção com o pedido.</p>
     <div class="card stack">${(o.items||[]).map(i=>`<div><b>${i.qty}× ${esc(i.name)}</b>${i.desc?`<div class="cardmsg">${esc(i.desc)}</div>`:''}</div>`).join('')}${thumbsHTML(o)}<div class="small muted">Para ${o.time||'sem horário'} · ${fDS(o.date)} · ${TYPES[o.type]}</div></div>
@@ -1227,13 +1241,7 @@ function receiveDialog(o){
     await oact(cur,{status:'recebido',divOpen:false,receivedBy:me.name,card:cardSel(),cardMsg:cardSel()==='com'?$('#rc-msg').value.trim():'',cardDone:true,times:{recebidoAt:now()},transport:{startedAt:tr.startedAt||now(),startedBy:tr.startedBy||me.name,endedAt:tr.endedAt||now(),endedBy:tr.endedBy||me.name}},'Recebimento conferido','Produto e quantidade conferidos por '+me.name);
     closeLayer('dlg'); toast(orderNum(cur)+' recebido no atendimento');
   });
-  $('#rc-div').onclick=()=>run(async()=>{
-    const v=await ask({title:'Registrar divergência',note:'O pedido volta para a fila de correção da produção.',danger:true,ok:'Registrar divergência',fields:[{id:'type',label:'O que aconteceu?',type:'select',options:Object.entries(DIVT).map(([v,l])=>({v,l}))},{id:'note',label:'Detalhes',type:'textarea',required:true}]});
-    if(!v) return;
-    const cur=S.orders[o.id];
-    await oact(cur,{status:'divergencia',divOpen:true,div:{type:v.type,label:DIVT[v.type],note:v.note,by:me.name,at:now()},divCount:(cur.divCount||0)+1},'Divergência registrada',DIVT[v.type]+'. '+v.note);
-    closeLayer('dlg'); toast('Pedido enviado para correção');
-  });
+  $('#rc-div').onclick=()=>run(()=>divergenceDialog(o));
 }
 
 /* ---------- formulários de cadastro ---------- */
@@ -1438,7 +1446,9 @@ H['card-done']=async d=>{ const o=ordr(d); const v=await ask({title:'Cartão '+o
 H['p-ready']=d=>oact(ordr(d),{status:'pronto_subir',readyBy:me.name,times:{prontoAt:now()}},'Pronto para subir');
 H['t-start']=d=>oact(ordr(d),{status:'em_transporte',transport:{startedAt:now(),startedBy:me.name,endedAt:null,endedBy:null}},'Transporte iniciado');
 H['r-receive']=d=>receiveDialog(ordr(d));
-H['r-find']=()=>{ const n=Number(digits($('#rcv-num').value)); const o=arr('orders').find(x=>x.num===n); if(!o){ toast('Pedido '+(n||'')+' não encontrado',true); return; } if(!['pronto_subir','em_transporte'].includes(o.status)){ toast(`${orderNum(o)} está em "${stLabel(o)}" e não aguarda recebimento`,true); return; } receiveDialog(o); };
+H['r-now']=d=>receiveNow(ordr(d));
+H['r-div']=d=>divergenceDialog(ordr(d));
+H['r-find']=()=>{ const n=Number(digits($('#rcv-num').value)); const o=arr('orders').find(x=>x.num===n); if(!o){ toast('Pedido '+(n||'')+' não encontrado',true); return; } if(!['pronto_subir','em_transporte'].includes(o.status)){ toast(`${orderNum(o)} está em "${stLabel(o)}" e não aguarda recebimento`,true); return; } return receiveNow(o); };
 H['p-fix']=d=>{ const o=ordr(d); return oact(o,{status:'pronto_subir',divOpen:false,transport:null},'Correção concluída','Pedido reenviado ao atendimento'); };
 function guardCard(o){ if(o.card!=='sem'&&!o.cardDone) throw new Error(isDrv()?'O cartão deste pedido ainda não foi feito. Avise o atendimento.':'O cartão deste pedido ainda não foi feito. Use "Cartão pronto" no pedido.'); }
 function guardConclude(o){ if(o.divOpen) throw new Error('Conclusão bloqueada: há uma divergência em aberto'); }

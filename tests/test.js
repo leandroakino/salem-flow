@@ -104,20 +104,20 @@ const mock = `
     if (await page.getByRole('button', { name: 'Iniciar transporte' }).count()) throw new Error('produção não deve precisar iniciar transporte');
     if (await page.getByRole('button', { name: 'Concluir transporte' }).count()) throw new Error('ainda existe concluir transporte');
     await login('Atendimento 1'); await page.locator('.tab', { hasText: 'Receber' }).click();
-    if (!(await page.getByRole('button', { name: 'Receber e conferir' }).count())) throw new Error('atendimento deve receber direto, sem iniciar transporte');
+    if (!(await page.getByRole('button', { name: 'Confirmar recebimento' }).count())) throw new Error('atendimento deve receber com 1 clique, sem iniciar transporte');
     await login('Produção'); await page.locator('.tab', { hasText: 'Produção' }).click();
   });
   await step('divergência no recebimento bloqueia conclusão', async () => {
     await login('Atendimento 1'); await btn('Receber', true).first().click().catch(()=>{});
     await page.locator('.tab', { hasText: 'Receber' }).click();
-    await page.fill('#rcv-num', '1'); await btn('Conferir pedido').click();
-    await page.waitForSelector('#rc-div');
-    await btn('Registrar divergência').click();
+    await page.locator('.ocard', { hasText: '#0001' }).first().click(); await page.waitForSelector('.drawer');
+    await page.locator('.drawer').getByRole('button', { name: 'Registrar divergência' }).click();
     await page.waitForSelector('#askf');
     await page.selectOption('#q-type', 'produto_errado');
     await page.fill('#q-note', 'Cores diferentes do pedido');
-    await btn('Registrar divergência').last().click();
+    await page.locator('#askf').getByRole('button', { name: 'Registrar divergência' }).click();
     await page.waitForFunction(() => window.__store['orders/o0001'].status === 'divergencia');
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
   });
   await step('produção corrige e reenvia', async () => {
     await login('Produção');
@@ -126,13 +126,9 @@ const mock = `
   });
   await step('recebimento ok e retirada', async () => {
     await login('Atendimento 1'); await page.locator('.tab', { hasText: 'Receber' }).click();
-    await page.fill('#rcv-num', '1'); await btn('Conferir pedido').click();
-    await page.waitForSelector('#rc-ok');
-    await page.locator('#rc-1').check();
-    if (!(await page.locator('#rc-ok').isDisabled())) throw new Error('liberou sem conferir o cartão');
-    await page.locator('#rc-3').check();
-    await page.locator('#rc-ok').click();
+    await btn('Confirmar recebimento').first().click();
     await page.waitForFunction(() => window.__store['orders/o0001'].status === 'recebido');
+    if (await page.locator('#dlg .sheet').count()) throw new Error('o recebimento não deve abrir janela');
     await page.locator('.tab', { hasText: 'Entregas' }).click();
     await btn('Registrar retirada').click();
     await page.waitForSelector('#askf');
@@ -182,7 +178,7 @@ const mock = `
     if (!(await page.locator('#plist .col header', { hasText: 'Finalizados' }).count())) throw new Error('sem seção Finalizados');
     await page.locator('.ocard', { hasText: '#0002' }).first().click();
     await page.waitForSelector('.drawer');
-    await page.waitForFunction(() => document.querySelector('.drawer') && document.querySelector('.drawer').innerText.includes('Receber e conferir'));
+    await page.waitForFunction(() => document.querySelector('.drawer') && document.querySelector('.drawer').innerText.includes('Confirmar recebimento'));
   });
   await step('aba Materiais: avisar, providenciar, receber', async () => {
     await page.keyboard.press('Escape');
