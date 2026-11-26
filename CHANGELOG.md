@@ -3,7 +3,7 @@
 Cada atualização publicada ganha um número e fica registrada aqui com o commit correspondente. A versão aparece na tela de login e no menu do usuário.
 Para voltar a uma versão: `git checkout <commit>` (ou peça ao Claude: "voltar para a v1.2").
 
-## v1.8
+## v1.8 (commit e273657)
 - Recebimento em 1 clique: botão "Confirmar recebimento" no pedido que subiu, sem janela e sem caixas de conferência (o cartão passa a valer como conferido).
 - "Registrar divergência" fica no detalhe do pedido, para quando algo estiver errado.
 - Na aba Receber, o botão do número vira "Confirmar pelo número" e também recebe direto.
