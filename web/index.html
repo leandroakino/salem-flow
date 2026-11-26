@@ -282,7 +282,7 @@ window.SALEM_WEB={sb,db,assets,dl,photoURL,url:SUPABASE_URL,key:SUPABASE_KEY,cre
 <script>
 (async function(){
 'use strict';
-const APP_VERSION='1.8';
+const APP_VERSION='1.9';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -585,7 +585,7 @@ function secondary(o){
   if(prod&&['liberado','aguardando_prod','em_producao'].includes(o.status)) a.push({a:'p-wait',l:'Avisar falta de material'},{a:'p-problem',l:'Informar problema'});
   if(prod&&['em_producao','finalizado'].includes(o.status)&&!o.confReq) a.push({a:'p-confreq',l:'Solicitar conferência'});
   if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-div',l:'Registrar divergência'});
-  if((att||(isDrv()&&mine(o)))&&o.status==='saiu_entrega') a.push({a:'d-prob',l:'Problema na entrega'});
+  if((att||(isDrv()&&mine(o)))&&o.status==='saiu_entrega') a.push({a:'d-other',l:'Entregue a outra pessoa'},{a:'d-prob',l:'Problema na entrega'});
   a.push({a:'o-ficha',l:'Ficha do pedido'});
   if(att&&open) a.push({a:'o-cancel',l:'Cancelar pedido'});
   return a;
@@ -615,6 +615,7 @@ function prodCard(o){
     ${o.block&&o.status==='bloqueado'?`<div class="cardmsg">Bloqueio: ${esc(o.block.reason)}</div>`:''}
     ${o.div&&o.status==='divergencia'?`<div class="cardmsg">Divergência: ${esc(o.div.label)}. ${esc(o.div.note)}</div>`:''}
     ${pa?`<button class="btn primary lg" data-act="${pa.a}" data-id="${o.id}">${pa.l}</button>`:''}
+    ${pa&&pa.a==='d-done'?`<button class="btn lg" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}
   </article>`;
 }
 function orderRow(o){
@@ -782,6 +783,7 @@ function drvCard(o,k){
     ${o.status==='entrega_problema'&&d.problem?`<div class="cardmsg">Problema: ${esc(d.problem)}</div>`:''}
     <div class="row" style="flex-wrap:wrap;gap:8px">
       ${pa?`<button class="btn primary lg" data-act="${pa.a}" data-id="${o.id}">${pa.l}</button>`:''}
+      ${pa&&pa.a==='d-done'?`<button class="btn" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}
       ${pr?`<button class="btn" data-act="d-prob" data-id="${o.id}">Problema</button>`:''}
       ${o.recipientPhone&&digits(o.recipientPhone)?`<a class="btn" data-act="noop" href="tel:${digits(o.recipientPhone)}">Ligar p/ destinatário</a>`:''}${tel?`<a class="btn" data-act="noop" href="tel:${tel}">${o.recipientPhone?'Ligar p/ comprador':'Ligar'}</a>`:''}
     </div></article>`;
@@ -1461,7 +1463,9 @@ H['dr-edit']=async d=>{ const u=S.users[d.id]; if(driverBusy(u).length) throw ne
 H['dr-off']=async d=>{ const u=S.users[d.id]; if(driverBusy(u).length) throw new Error('Este entregador tem entrega em andamento. Remova depois que ele terminar.'); if(!(await confirmDlg('Remover '+u.name+'?','Ele deixa de aparecer na lista e não consegue mais entrar. O histórico das entregas dele continua guardado. Dá para reativar depois.','Remover',true))) return; await patch('users',u.id,{active:false}); await logEv('Entregador removido',u.name); };
 H['dr-on']=async d=>{ const u=S.users[d.id]; await patch('users',u.id,{active:true}); await logEv('Entregador reativado',u.name); };
 H['d-out']=async d=>{ const o=ordr(d); guardCard(o); if(isDrv()){ await oact(o,{status:'saiu_entrega',delivery:{driver:me.name,outAt:now(),problem:null}},'Saiu para entrega',me.name); toast(orderNum(o)+' com você'); return; } const D=drivers(); const v=await ask({title:`Saída para entrega ${orderNum(o)}`,ok:'Saiu para entrega',note:D.length?'':'Nenhum entregador cadastrado. Cadastre na aba Entregadores para ele ver a entrega no celular.',fields:[D.length?{id:'driver',label:'Quem vai entregar',type:'select',options:D.map(u=>({v:u.name,l:u.name})),value:D[0].name}:{id:'driver',label:'Quem vai entregar',type:'text',required:true}]}); if(v) await oact(o,{status:'saiu_entrega',delivery:{driver:v.driver,outAt:now(),problem:null}},'Saiu para entrega',v.driver); };
-H['d-done']=async d=>{ const o=ordr(d); guardConclude(o); guardCard(o); const v=await ask({title:`Confirmar entrega ${orderNum(o)}`,ok:'Entrega confirmada',fields:[{id:'who',label:'Quem recebeu',type:'text',required:true,value:o.recipient||''},{id:'obs',label:'Observações',type:'text'}]}); if(v) await oact(o,{status:'concluido',outcome:'entrega',times:{concluidoAt:now()},delivery:{...(o.delivery||{}),receivedBy:v.who,doneAt:now(),by:me.name,obs:v.obs}},'Entrega confirmada','Recebido por '+v.who); };
+const deliverDone=(o,who,obs)=>oact(o,{status:'concluido',outcome:'entrega',times:{concluidoAt:now()},delivery:{...(o.delivery||{}),receivedBy:who,doneAt:now(),by:me.name,obs:obs||''}},'Entrega confirmada','Recebido por '+who);
+H['d-done']=async d=>{ const o=ordr(d); guardConclude(o); guardCard(o); const who=o.recipient||o.client.name; await deliverDone(o,who); toast(orderNum(o)+' entregue a '+who); };
+H['d-other']=async d=>{ const o=ordr(d); guardConclude(o); guardCard(o); const v=await ask({title:`Entregue a outra pessoa ${orderNum(o)}`,ok:'Entrega confirmada',fields:[{id:'who',label:'Quem recebeu',type:'text',required:true,value:''},{id:'obs',label:'Observações',type:'text'}]}); if(v){ await deliverDone(o,v.who,v.obs); toast(orderNum(o)+' entregue a '+v.who); } };
 H['d-prob']=async d=>{ const o=ordr(d); const v=await ask({title:'Problema na entrega',ok:'Registrar',danger:true,fields:[{id:'t',label:'O que aconteceu?',type:'textarea',required:true}]}); if(v) await oact(o,{status:'entrega_problema',delivery:{problem:v.t}},'Problema na entrega',v.t); };
 H['a-neg']=async d=>{ const o=ordr(d); if(!await confirmDlg('Liberar pedido bloqueado?',esc(o.block?o.block.reason:''),'Liberar e concluir')) return; await completeProduction(o); toast('Pedido pronto para subir.'); };
 H['f-add']=d=>{ const p=S.products[d.pid]; const ex=!p.custom&&FM.items.find(i=>i.productId===p.id); if(ex) ex.qty=(Number(ex.qty)||0)+1; else FM.items.push({productId:p.id,name:p.name,category:p.category,qty:1,price:p.price,desc:'',isCustom:!!p.custom}); renderForm(); };

@@ -247,11 +247,16 @@ const mock = `
     if (!(await card.innerText()).includes('Rua das Flores 10')) throw new Error('sem endereço');
     await card.getByRole('button', { name: 'Peguei para entregar' }).click();
     await page.waitForFunction(() => window.__store['orders/o0900'].status === 'saiu_entrega' && window.__store['orders/o0900'].delivery.driver === 'Rui Entregador');
-    await page.locator('.ocard', { hasText: 'Dona Marta' }).getByRole('button', { name: 'Entreguei' }).click(); await page.waitForSelector('#askf');
+    await page.locator('.ocard', { hasText: 'Dona Marta' }).getByRole('button', { name: 'Entreguei' }).waitFor();
+    await page.locator('.ocard', { hasText: 'Dona Marta' }).getByRole('button', { name: 'Entregue a outra pessoa' }).click(); await page.waitForSelector('#askf');
     await page.locator('#askf input').first().fill('Filha da Marta');
     await btn('Entrega confirmada').click();
     await page.waitForFunction(() => { const o = window.__store['orders/o0900']; return o.status === 'concluido' && o.outcome === 'entrega' && o.delivery.receivedBy === 'Filha da Marta' && o.delivery.driver === 'Rui Entregador'; });
     await page.waitForSelector('text=recebido por Filha da Marta');
+    await page.evaluate(() => { const st = window.__store; st['orders/o0901'] = { ...JSON.parse(JSON.stringify(st['orders/o0900'])), id: 'o0901', num: 901, key: 'k901', status: 'saiu_entrega', client: { name: 'Seu Zé', phone: '92 99999-2222' }, recipient: 'Dona Lia', delivery: { driver: 'Rui Entregador', outAt: Date.now() }, outcome: null }; window.__notify(); });
+    await page.locator('.ocard', { hasText: 'Seu Zé' }).getByRole('button', { name: 'Entreguei' }).click();
+    await page.waitForFunction(() => { const o = window.__store['orders/o0901']; return o.status === 'concluido' && o.delivery.receivedBy === 'Dona Lia'; });
+    if (await page.locator('#askf').count()) throw new Error('Entreguei não deve abrir janela');
     await login('Atendimento 1'); await page.locator('.tab', { hasText: 'Pedidos' }).click();
   });
   await step('cadastrar, escolher e remover entregador', async () => {

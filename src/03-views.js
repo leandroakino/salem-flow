@@ -27,7 +27,7 @@ function secondary(o){
   if(prod&&['liberado','aguardando_prod','em_producao'].includes(o.status)) a.push({a:'p-wait',l:'Avisar falta de material'},{a:'p-problem',l:'Informar problema'});
   if(prod&&['em_producao','finalizado'].includes(o.status)&&!o.confReq) a.push({a:'p-confreq',l:'Solicitar conferência'});
   if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-div',l:'Registrar divergência'});
-  if((att||(isDrv()&&mine(o)))&&o.status==='saiu_entrega') a.push({a:'d-prob',l:'Problema na entrega'});
+  if((att||(isDrv()&&mine(o)))&&o.status==='saiu_entrega') a.push({a:'d-other',l:'Entregue a outra pessoa'},{a:'d-prob',l:'Problema na entrega'});
   a.push({a:'o-ficha',l:'Ficha do pedido'});
   if(att&&open) a.push({a:'o-cancel',l:'Cancelar pedido'});
   return a;
@@ -57,6 +57,7 @@ function prodCard(o){
     ${o.block&&o.status==='bloqueado'?`<div class="cardmsg">Bloqueio: ${esc(o.block.reason)}</div>`:''}
     ${o.div&&o.status==='divergencia'?`<div class="cardmsg">Divergência: ${esc(o.div.label)}. ${esc(o.div.note)}</div>`:''}
     ${pa?`<button class="btn primary lg" data-act="${pa.a}" data-id="${o.id}">${pa.l}</button>`:''}
+    ${pa&&pa.a==='d-done'?`<button class="btn lg" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}
   </article>`;
 }
 function orderRow(o){
@@ -224,6 +225,7 @@ function drvCard(o,k){
     ${o.status==='entrega_problema'&&d.problem?`<div class="cardmsg">Problema: ${esc(d.problem)}</div>`:''}
     <div class="row" style="flex-wrap:wrap;gap:8px">
       ${pa?`<button class="btn primary lg" data-act="${pa.a}" data-id="${o.id}">${pa.l}</button>`:''}
+      ${pa&&pa.a==='d-done'?`<button class="btn" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}
       ${pr?`<button class="btn" data-act="d-prob" data-id="${o.id}">Problema</button>`:''}
       ${o.recipientPhone&&digits(o.recipientPhone)?`<a class="btn" data-act="noop" href="tel:${digits(o.recipientPhone)}">Ligar p/ destinatário</a>`:''}${tel?`<a class="btn" data-act="noop" href="tel:${tel}">${o.recipientPhone?'Ligar p/ comprador':'Ligar'}</a>`:''}
     </div></article>`;
