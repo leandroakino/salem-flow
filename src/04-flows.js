@@ -129,13 +129,14 @@ function formHTML(){
       <label class="fld"><span>Taxa de entrega (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="fee" value="${esc(F.fee)}"></label><label class="fld"><span>Desconto (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="discount" value="${esc(F.discount)}"></label></div>
       <div class="row between"><span class="muted">Valor total</span><span class="tot" id="f-tot">${money(fToOrder(F).total)}</span></div></section>
     <div id="f-checks">${checksHTML(E)}</div>
-    <div class="row end">${draft?'<button class="btn" data-act="f-save" data-release="0">Salvar rascunho</button>':''}<button class="btn primary lg" id="f-release" data-act="f-save" data-release="1" ${blk?'disabled':''}>${blk?`Faltam ${blk} item(ns)`:(draft?(FM.noProd?'Salvar e enviar sem produção':'Salvar e liberar para produção'):'Salvar alterações')}</button></div>
+    <div class="row end formfoot"><span class="ftot">Total <b id="f-tot2">${money(fToOrder(F).total)}</b></span>${draft?'<button class="btn" data-act="f-save" data-release="0">Salvar rascunho</button>':''}<button class="btn primary lg" id="f-release" data-act="f-save" data-release="1" ${blk?'disabled':''}>${blk?`Faltam ${blk} item(ns)`:(draft?(FM.noProd?'Salvar e enviar sem produção':'Salvar e liberar para produção'):'Salvar alterações')}</button></div>
   </div>`;
 }
+LY('form').addEventListener('click',e=>{ if(!(window.matchMedia&&matchMedia('(max-width:700px)').matches)) return; const f=e.target.closest&&e.target.closest('.formfoot'), b=$('#f-release'); if(f&&b&&b.disabled){ const c=$('#f-checks'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'}); } });
 function renderForm(){ const l=LY('form'), sc=l.scrollTop; l.innerHTML=formHTML(); l.hidden=false; l.scrollTop=sc; }
 function liveForm(){
   const E=validate(FM), blk=E.filter(e=>e.block).length, ex=FM.id&&S.orders[FM.id], draft=!FM.id||(ex&&ex.status==='rascunho');
-  $('#f-tot').textContent=money(fToOrder(FM).total); $('#f-checks').innerHTML=checksHTML(E);
+  $('#f-tot').textContent=money(fToOrder(FM).total); const t2=$('#f-tot2'); if(t2) t2.textContent=$('#f-tot').textContent; $('#f-checks').innerHTML=checksHTML(E);
   const b=$('#f-release'); if(b){ b.disabled=blk>0; b.textContent=blk?`Faltam ${blk} item(ns)`:(draft?(FM.noProd?'Salvar e enviar sem produção':'Salvar e liberar para produção'):'Salvar alterações'); }
 }
 function openForm(F){ FM=F; renderForm(); setTimeout(()=>{ const e=$('#fo-phone'); if(e&&!FM.phone) e.focus(); },50); }
@@ -323,6 +324,7 @@ H.setup=()=>setup();
 H['close-drawer']=()=>closeLayer('drawer');
 H['f-close']=()=>{ closeLayer('form'); FM=null; };
 H['o-open']=d=>openDrawer(d.id);
+H['pf-tog']=()=>{ PF.open=!PF.open; render(true); };
 H['o-new']=d=>{ const F=newF(); if(d.cid&&S.clients[d.cid]){ F.name=S.clients[d.cid].name; F.phone=S.clients[d.cid].phone; } openForm(F); };
 H['o-edit']=d=>openForm(orderToF(ordr(d)));
 H['o-dup']=d=>{ const F=orderToF(ordr(d)); openForm({...F,id:null,key:uid(),date:todayKey(),time:'',noTime:false,photos:[],urgent:false}); };

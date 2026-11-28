@@ -198,6 +198,18 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 @media (prefers-reduced-motion:reduce){.tvi.late::after{animation:none;opacity:.7}.tvi.fx-new,.tvi.fx-moved{animation:none;outline:3px solid var(--c)}.tvi.fx-new::before,.tvi.fx-moved::before{animation:none}}
 .tvi.late{outline:3px solid var(--s-red)}
 @media (max-width:640px){.itemrow{grid-template-columns:1fr 84px}.itemrow .full{grid-column:1/-1}.kv{grid-template-columns:100px 1fr}.bar{grid-template-columns:80px 1fr auto}}
+/* v1.12 — celular (só telas estreitas; desktop não muda) */
+.pf-tog,.ftot{display:none}
+@media (max-width:700px){
+.toolbar.pf{gap:8px}.toolbar.pf .grow{flex:1 1 100%}.pf-tog{display:inline-flex;align-items:center}
+.toolbar.pf:not(.open) #pf-status,.toolbar.pf:not(.open) #pf-channel,.toolbar.pf:not(.open) #pf-when,.toolbar.pf:not(.open) #pf-slot,.toolbar.pf:not(.open) #pf-date{display:none}
+.toolbar.pf .sel,.toolbar.pf .inp{flex:1 1 44%}
+.formfoot{position:sticky;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line,rgba(0,0,0,.12));margin:0 -18px -18px;padding:10px 18px calc(10px + env(safe-area-inset-bottom,0px));flex-wrap:nowrap;justify-content:space-between}
+.formfoot .ftot{display:inline-flex;flex-direction:column;font-size:.8rem;color:var(--muted);line-height:1.15}.formfoot .ftot b{font-size:1.15rem;color:var(--ink)}
+.formfoot .btn{flex:1 1 auto}.formfoot #f-release:disabled{pointer-events:none}
+#toasts{bottom:auto;top:calc(72px + env(safe-area-inset-top,0px))}
+.kv{grid-template-columns:1fr;gap:0}.kv dt{font-size:.78rem;margin-top:8px}.kv dd{font-weight:500}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 <div id="app">

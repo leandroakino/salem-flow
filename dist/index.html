@@ -198,6 +198,18 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 @media (prefers-reduced-motion:reduce){.tvi.late::after{animation:none;opacity:.7}.tvi.fx-new,.tvi.fx-moved{animation:none;outline:3px solid var(--c)}.tvi.fx-new::before,.tvi.fx-moved::before{animation:none}}
 .tvi.late{outline:3px solid var(--s-red)}
 @media (max-width:640px){.itemrow{grid-template-columns:1fr 84px}.itemrow .full{grid-column:1/-1}.kv{grid-template-columns:100px 1fr}.bar{grid-template-columns:80px 1fr auto}}
+/* v1.12 — celular (só telas estreitas; desktop não muda) */
+.pf-tog,.ftot{display:none}
+@media (max-width:700px){
+.toolbar.pf{gap:8px}.toolbar.pf .grow{flex:1 1 100%}.pf-tog{display:inline-flex;align-items:center}
+.toolbar.pf:not(.open) #pf-status,.toolbar.pf:not(.open) #pf-channel,.toolbar.pf:not(.open) #pf-when,.toolbar.pf:not(.open) #pf-slot,.toolbar.pf:not(.open) #pf-date{display:none}
+.toolbar.pf .sel,.toolbar.pf .inp{flex:1 1 44%}
+.formfoot{position:sticky;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line,rgba(0,0,0,.12));margin:0 -18px -18px;padding:10px 18px calc(10px + env(safe-area-inset-bottom,0px));flex-wrap:nowrap;justify-content:space-between}
+.formfoot .ftot{display:inline-flex;flex-direction:column;font-size:.8rem;color:var(--muted);line-height:1.15}.formfoot .ftot b{font-size:1.15rem;color:var(--ink)}
+.formfoot .btn{flex:1 1 auto}.formfoot #f-release:disabled{pointer-events:none}
+#toasts{bottom:auto;top:calc(72px + env(safe-area-inset-top,0px))}
+.kv{grid-template-columns:1fr;gap:0}.kv dt{font-size:.78rem;margin-top:8px}.kv dd{font-weight:500}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 <div id="app">
@@ -213,7 +225,7 @@ body.is-tv #view{max-width:none;padding-left:0;padding-right:0}
 <script>
 (async function(){
 'use strict';
-const APP_VERSION='1.11';
+const APP_VERSION='1.12';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -652,7 +664,7 @@ function viewPend(P){
 }
 
 /* ---------- pedidos ---------- */
-let PF={q:'',status:'abertos',channel:'',when:'todos',date:'',slot:''};
+let PF={q:'',status:'abertos',channel:'',when:(window.matchMedia&&matchMedia('(max-width:700px)').matches)?'hoje':'todos',date:'',slot:'',open:false};
 function pedidosList(){
   let L=arr('orders');
   const q=PF.q.trim().toLowerCase(), qd=digits(PF.q);
@@ -674,7 +686,8 @@ function pedidosList(){
 function viewPedidos(){
   const opt=(o,v)=>Object.entries(o).map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('');
   const stOpts={abertos:'Abertos',atrasados:'Atrasados',todos:'Todos',concluido:'Concluídos',cancelado:'Cancelados',...Object.fromEntries(Object.entries(ST).filter(([k])=>!['concluido','cancelado'].includes(k)).map(([k,v])=>[k,v.l]))};
-  return `<div class="toolbar"><div class="grow"><input id="pf-q" class="inp" type="search" placeholder="Buscar por número, cliente ou telefone" value="${esc(PF.q)}" aria-label="Buscar pedido"></div>
+  const nAct=(PF.status!=='abertos'?1:0)+(PF.channel?1:0)+(PF.when!=='todos'?1:0)+(PF.slot?1:0);
+  return `<div class="toolbar pf${PF.open?' open':''}"><div class="grow"><input id="pf-q" class="inp" type="search" placeholder="Buscar por número, cliente ou telefone" value="${esc(PF.q)}" aria-label="Buscar pedido"></div><button class="btn pf-tog" data-act="pf-tog" aria-expanded="${PF.open}">Filtros${nAct?' ('+nAct+')':''}</button>
     <select id="pf-status" class="sel" aria-label="Status">${opt(stOpts,PF.status)}</select>
     <select id="pf-channel" class="sel" aria-label="Canal"><option value="">Todos os canais</option>${opt(CHANNELS,PF.channel)}</select>
     <select id="pf-when" class="sel" aria-label="Data"><option value="todos" ${PF.when==='todos'?'selected':''}>Qualquer data</option><option value="hoje" ${PF.when==='hoje'?'selected':''}>Hoje</option><option value="amanha" ${PF.when==='amanha'?'selected':''}>Amanhã</option><option value="data" ${PF.when==='data'?'selected':''}>Escolher data</option></select>
@@ -1099,13 +1112,14 @@ function formHTML(){
       <label class="fld"><span>Taxa de entrega (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="fee" value="${esc(F.fee)}"></label><label class="fld"><span>Desconto (R$)</span><input class="inp" type="number" min="0" step="0.01" data-f="discount" value="${esc(F.discount)}"></label></div>
       <div class="row between"><span class="muted">Valor total</span><span class="tot" id="f-tot">${money(fToOrder(F).total)}</span></div></section>
     <div id="f-checks">${checksHTML(E)}</div>
-    <div class="row end">${draft?'<button class="btn" data-act="f-save" data-release="0">Salvar rascunho</button>':''}<button class="btn primary lg" id="f-release" data-act="f-save" data-release="1" ${blk?'disabled':''}>${blk?`Faltam ${blk} item(ns)`:(draft?(FM.noProd?'Salvar e enviar sem produção':'Salvar e liberar para produção'):'Salvar alterações')}</button></div>
+    <div class="row end formfoot"><span class="ftot">Total <b id="f-tot2">${money(fToOrder(F).total)}</b></span>${draft?'<button class="btn" data-act="f-save" data-release="0">Salvar rascunho</button>':''}<button class="btn primary lg" id="f-release" data-act="f-save" data-release="1" ${blk?'disabled':''}>${blk?`Faltam ${blk} item(ns)`:(draft?(FM.noProd?'Salvar e enviar sem produção':'Salvar e liberar para produção'):'Salvar alterações')}</button></div>
   </div>`;
 }
+LY('form').addEventListener('click',e=>{ if(!(window.matchMedia&&matchMedia('(max-width:700px)').matches)) return; const f=e.target.closest&&e.target.closest('.formfoot'), b=$('#f-release'); if(f&&b&&b.disabled){ const c=$('#f-checks'); if(c) c.scrollIntoView({behavior:'smooth',block:'center'}); } });
 function renderForm(){ const l=LY('form'), sc=l.scrollTop; l.innerHTML=formHTML(); l.hidden=false; l.scrollTop=sc; }
 function liveForm(){
   const E=validate(FM), blk=E.filter(e=>e.block).length, ex=FM.id&&S.orders[FM.id], draft=!FM.id||(ex&&ex.status==='rascunho');
-  $('#f-tot').textContent=money(fToOrder(FM).total); $('#f-checks').innerHTML=checksHTML(E);
+  $('#f-tot').textContent=money(fToOrder(FM).total); const t2=$('#f-tot2'); if(t2) t2.textContent=$('#f-tot').textContent; $('#f-checks').innerHTML=checksHTML(E);
   const b=$('#f-release'); if(b){ b.disabled=blk>0; b.textContent=blk?`Faltam ${blk} item(ns)`:(draft?(FM.noProd?'Salvar e enviar sem produção':'Salvar e liberar para produção'):'Salvar alterações'); }
 }
 function openForm(F){ FM=F; renderForm(); setTimeout(()=>{ const e=$('#fo-phone'); if(e&&!FM.phone) e.focus(); },50); }
@@ -1293,6 +1307,7 @@ H.setup=()=>setup();
 H['close-drawer']=()=>closeLayer('drawer');
 H['f-close']=()=>{ closeLayer('form'); FM=null; };
 H['o-open']=d=>openDrawer(d.id);
+H['pf-tog']=()=>{ PF.open=!PF.open; render(true); };
 H['o-new']=d=>{ const F=newF(); if(d.cid&&S.clients[d.cid]){ F.name=S.clients[d.cid].name; F.phone=S.clients[d.cid].phone; } openForm(F); };
 H['o-edit']=d=>openForm(orderToF(ordr(d)));
 H['o-dup']=d=>{ const F=orderToF(ordr(d)); openForm({...F,id:null,key:uid(),date:todayKey(),time:'',noTime:false,photos:[],urgent:false}); };

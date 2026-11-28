@@ -163,7 +163,7 @@ function viewPend(P){
 }
 
 /* ---------- pedidos ---------- */
-let PF={q:'',status:'abertos',channel:'',when:'todos',date:'',slot:''};
+let PF={q:'',status:'abertos',channel:'',when:(window.matchMedia&&matchMedia('(max-width:700px)').matches)?'hoje':'todos',date:'',slot:'',open:false};
 function pedidosList(){
   let L=arr('orders');
   const q=PF.q.trim().toLowerCase(), qd=digits(PF.q);
@@ -185,7 +185,8 @@ function pedidosList(){
 function viewPedidos(){
   const opt=(o,v)=>Object.entries(o).map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('');
   const stOpts={abertos:'Abertos',atrasados:'Atrasados',todos:'Todos',concluido:'Concluídos',cancelado:'Cancelados',...Object.fromEntries(Object.entries(ST).filter(([k])=>!['concluido','cancelado'].includes(k)).map(([k,v])=>[k,v.l]))};
-  return `<div class="toolbar"><div class="grow"><input id="pf-q" class="inp" type="search" placeholder="Buscar por número, cliente ou telefone" value="${esc(PF.q)}" aria-label="Buscar pedido"></div>
+  const nAct=(PF.status!=='abertos'?1:0)+(PF.channel?1:0)+(PF.when!=='todos'?1:0)+(PF.slot?1:0);
+  return `<div class="toolbar pf${PF.open?' open':''}"><div class="grow"><input id="pf-q" class="inp" type="search" placeholder="Buscar por número, cliente ou telefone" value="${esc(PF.q)}" aria-label="Buscar pedido"></div><button class="btn pf-tog" data-act="pf-tog" aria-expanded="${PF.open}">Filtros${nAct?' ('+nAct+')':''}</button>
     <select id="pf-status" class="sel" aria-label="Status">${opt(stOpts,PF.status)}</select>
     <select id="pf-channel" class="sel" aria-label="Canal"><option value="">Todos os canais</option>${opt(CHANNELS,PF.channel)}</select>
     <select id="pf-when" class="sel" aria-label="Data"><option value="todos" ${PF.when==='todos'?'selected':''}>Qualquer data</option><option value="hoje" ${PF.when==='hoje'?'selected':''}>Hoje</option><option value="amanha" ${PF.when==='amanha'?'selected':''}>Amanhã</option><option value="data" ${PF.when==='data'?'selected':''}>Escolher data</option></select>
