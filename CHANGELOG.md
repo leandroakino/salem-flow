@@ -3,7 +3,7 @@
 Cada atualização publicada ganha um número e fica registrada aqui com o commit correspondente. A versão aparece na tela de login e no menu do usuário.
 Para voltar a uma versão: `git checkout <commit>` (ou peça ao Claude: "voltar para a v1.2").
 
-## v1.12 (commit: a definir na publicação)
+## v1.12 (commit bbdaba2)
 - Celular (telas até 700 px; o computador não muda): lista de pedidos abre em "Hoje" com os filtros recolhidos atrás do botão "Filtros (n)".
 - Celular: no formulário de novo pedido, o total e os botões ficam fixos no rodapé; tocar em "Faltam N item(ns)" leva à lista do que falta.
 - Celular: avisos aparecem no alto, sem cobrir os botões de baixo.
