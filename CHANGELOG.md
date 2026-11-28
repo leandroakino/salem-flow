@@ -3,7 +3,7 @@
 Cada atualização publicada ganha um número e fica registrada aqui com o commit correspondente. A versão aparece na tela de login e no menu do usuário.
 Para voltar a uma versão: `git checkout <commit>` (ou peça ao Claude: "voltar para a v1.2").
 
-## v1.11
+## v1.11 (commit 40b8076)
 - Sem "Resp.: nome" nos cartões da produção. No detalhe do pedido, "Responsável" aparece só para o administrador (o nome continua gravado no histórico e na auditoria).
 - O botão "Trocar usuário" do menu do nome passa a se chamar "Sair do sistema".
 
