@@ -282,7 +282,7 @@ window.SALEM_WEB={sb,db,assets,dl,photoURL,url:SUPABASE_URL,key:SUPABASE_KEY,cre
 <script>
 (async function(){
 'use strict';
-const APP_VERSION='1.10';
+const APP_VERSION='1.11';
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -610,7 +610,7 @@ function prodCard(o){
   return `<article class="ocard ${isLate(o)?'late':''}" style="--c:var(--s-${ST[o.status].c})" data-act="o-open" data-id="${o.id}">
     <div class="row between"><span class="onum">${orderNum(o)}</span><span class="row" style="gap:6px">${flags(o)}</span></div>
     <div class="otitle">${esc(prodItemsText(o))}</div>
-    <div class="ometa"><span>Para ${o.time?o.time:'(sem horário)'} · ${fDS(o.date)}</span><span>${TYPES[o.type]}</span>${o.responsible?`<span>Resp.: ${esc(o.responsible)}</span>`:''}${o.status==='em_transporte'?'<span>Em transporte</span>':''}</div>
+    <div class="ometa"><span>Para ${o.time?o.time:'(sem horário)'} · ${fDS(o.date)}</span><span>${TYPES[o.type]}</span>${o.status==='em_transporte'?'<span>Em transporte</span>':''}</div>
     ${thumbsHTML(o)}${descs}
     ${o.buildNotes?`<div class="ometa">Montagem: ${esc(o.buildNotes)}</div>`:''}
     ${o.block&&o.status==='bloqueado'?`<div class="cardmsg">Bloqueio: ${esc(o.block.reason)}</div>`:''}
@@ -1095,7 +1095,7 @@ function drawerHTML(o){
     ${o.div&&o.status==='divergencia'?`<div class="cardmsg">Divergência: ${esc(o.div.label)}. ${esc(o.div.note)} (${esc(o.div.by)}, ${fDT(o.div.at)})</div>`:''}
     ${o.confReq?'<div class="cardmsg">A produção pediu conferência deste pedido.</div>':''}
     <div class="card"><h3>Itens</h3><div class="stack" style="margin-top:8px">${(o.items||[]).map(i=>`<div><b>${i.qty}× ${esc(i.name)}</b>${(prodOnly||drv)?'':` <span class="muted">${money(i.price)} cada</span>`}${i.desc?`<div class="cardmsg">${esc(i.desc)}</div>`:''}</div>`).join('')}</div>${thumbsHTML(o)}</div>
-    <dl class="kv">${kv('Entrega/retirada',`${fDS(o.date)} às ${o.time||'(sem horário)'} · ${TYPES[o.type]}`)}${prodOnly?'':kv('Cliente',`${esc(o.client.name)} · ${esc(o.client.phone)}`)}${prodOnly?'':kv(o.type==='entrega'?'Destinatário':'Quem retira',o.recipient?esc(o.recipient)+(o.recipientPhone?' · '+esc(o.recipientPhone):''):'')}${prodOnly?'':kv('Endereço',esc(o.address))}${prodOnly?'':kv('Cartão',o.card==='com'?`"${esc(o.cardMsg)}" (${o.cardDone?'feito':'a fazer'})`:o.card==='sem'?'Sem cartão':'A definir pelo atendimento')}${kv('Montagem',esc(o.buildNotes))}${(prodOnly||drv)?'':kv('Obs. internas',esc(o.notes))}${(prodOnly||drv)?'':kv('Canal',CHANNELS[o.channel])}${prodOnly?'':kv('Pagamento',`${PAYM[o.pay.method]} · ${PAYS[o.pay.status]}`)}${(prodOnly||drv)?'':kv('Valores',`Produtos ${money(o.sub)} + taxa ${money(o.fee)} − desconto ${money(o.discount)} = <b>${money(o.total)}</b>`)}${kv('Responsável',esc(o.responsible))}${kv('Retirada/entrega',dl_.who?`Retirado por ${esc(dl_.who)} (${esc(dl_.by)}, ${fDT(dl_.at)})${dl_.obs?'. '+esc(dl_.obs):''}`:dl_.receivedBy?`Recebido por ${esc(dl_.receivedBy)}, entregue por ${esc(dl_.driver||'')} ${dl_.obs?'. '+esc(dl_.obs):''}`:dl_.driver?`Entregador: ${esc(dl_.driver)}`:'')}</dl>
+    <dl class="kv">${kv('Entrega/retirada',`${fDS(o.date)} às ${o.time||'(sem horário)'} · ${TYPES[o.type]}`)}${prodOnly?'':kv('Cliente',`${esc(o.client.name)} · ${esc(o.client.phone)}`)}${prodOnly?'':kv(o.type==='entrega'?'Destinatário':'Quem retira',o.recipient?esc(o.recipient)+(o.recipientPhone?' · '+esc(o.recipientPhone):''):'')}${prodOnly?'':kv('Endereço',esc(o.address))}${prodOnly?'':kv('Cartão',o.card==='com'?`"${esc(o.cardMsg)}" (${o.cardDone?'feito':'a fazer'})`:o.card==='sem'?'Sem cartão':'A definir pelo atendimento')}${kv('Montagem',esc(o.buildNotes))}${(prodOnly||drv)?'':kv('Obs. internas',esc(o.notes))}${(prodOnly||drv)?'':kv('Canal',CHANNELS[o.channel])}${prodOnly?'':kv('Pagamento',`${PAYM[o.pay.method]} · ${PAYS[o.pay.status]}`)}${(prodOnly||drv)?'':kv('Valores',`Produtos ${money(o.sub)} + taxa ${money(o.fee)} − desconto ${money(o.discount)} = <b>${money(o.total)}</b>`)}${isAdm()?kv('Responsável',esc(o.responsible)):''}${kv('Retirada/entrega',dl_.who?`Retirado por ${esc(dl_.who)} (${esc(dl_.by)}, ${fDT(dl_.at)})${dl_.obs?'. '+esc(dl_.obs):''}`:dl_.receivedBy?`Recebido por ${esc(dl_.receivedBy)}, entregue por ${esc(dl_.driver||'')} ${dl_.obs?'. '+esc(dl_.obs):''}`:dl_.driver?`Entregador: ${esc(dl_.driver)}`:'')}</dl>
     ${sec.length?`<div class="pillbtns">${sec.map(s=>`<button class="btn sm" data-act="${s.a}" data-id="${o.id}">${s.l}</button>`).join('')}</div>`:''}
     <div class="card"><h3>Linha do tempo</h3><div class="tl" style="margin-top:8px">${tl.map(([l,t],i)=>`<div><b>${l}</b> · ${fDT(t)}${i&&tl[i-1]?` <span class="muted">(+${dur(t-tl[i-1][1])})</span>`:''}</div>`).join('')}</div></div>
     <div class="card"><h3>Histórico de alterações</h3><div class="hist" style="margin-top:8px">${[...(o.history||[])].reverse().map(h=>`<div><b>${esc(h.act)}</b>${h.detail?': '+esc(h.detail):''}<div class="muted">${esc(h.by)} · ${fDT(h.at)}</div></div>`).join('')}</div></div>
@@ -1353,7 +1353,7 @@ async function askPw(u){
   throw new Error('Senha incorreta');
 }
 H.login=async d=>{ const u=S.users[d.id]; if(!u) return; const ok=u.pw?await askPw(u):await createPw(u,'Este é o seu primeiro acesso com senha. Crie a sua para entrar. Ela será pedida nos próximos acessos.'); if(!ok) return; doLogin(u.id); await logEv('Login',u.name); };
-H['user-menu']=()=>{ openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>${esc(me.name)}</h2><p class="muted">${ROLES[me.role]}</p><p class="muted small">Salém Flow v${APP_VERSION}</p><div class="stack"><button class="btn lg" id="um-pw">Alterar senha</button><button class="btn lg" id="um-out">Trocar usuário</button><button class="btn" id="um-x">Fechar</button></div></div>`);
+H['user-menu']=()=>{ openLayer('dlg',`<div class="sheet small" role="dialog" aria-modal="true"><h2>${esc(me.name)}</h2><p class="muted">${ROLES[me.role]}</p><p class="muted small">Salém Flow v${APP_VERSION}</p><div class="stack"><button class="btn lg" id="um-pw">Alterar senha</button><button class="btn lg" id="um-out">Sair do sistema</button><button class="btn" id="um-x">Fechar</button></div></div>`);
   $('#um-x').onclick=()=>closeLayer('dlg'); $('#um-out').onclick=()=>{ closeLayer('dlg'); H.logout(); }; $('#um-pw').onclick=()=>{ closeLayer('dlg'); run(()=>H['pw-change']()); }; };
 H['pw-change']=async()=>{ const u=S.users[me.id]; if(u.pw){ const ok=await askPw(u); if(!ok) return; } await createPw(u,'Escolha a nova senha.'); };
 H['u-pw']=async d=>{ const u=S.users[d.id]; if(!(await confirmDlg('Redefinir a senha de '+u.name+'?','A senha atual deixa de valer. No próximo acesso, '+u.name+' cria uma nova.'))) return; await patch('users',u.id,{pw:null}); await logEv('Senha redefinida',u.name); toast('Senha redefinida'); };

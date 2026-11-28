@@ -52,7 +52,7 @@ function prodCard(o){
   return `<article class="ocard ${isLate(o)?'late':''}" style="--c:var(--s-${ST[o.status].c})" data-act="o-open" data-id="${o.id}">
     <div class="row between"><span class="onum">${orderNum(o)}</span><span class="row" style="gap:6px">${flags(o)}</span></div>
     <div class="otitle">${esc(prodItemsText(o))}</div>
-    <div class="ometa"><span>Para ${o.time?o.time:'(sem horário)'} · ${fDS(o.date)}</span><span>${TYPES[o.type]}</span>${o.responsible?`<span>Resp.: ${esc(o.responsible)}</span>`:''}${o.status==='em_transporte'?'<span>Em transporte</span>':''}</div>
+    <div class="ometa"><span>Para ${o.time?o.time:'(sem horário)'} · ${fDS(o.date)}</span><span>${TYPES[o.type]}</span>${o.status==='em_transporte'?'<span>Em transporte</span>':''}</div>
     ${thumbsHTML(o)}${descs}
     ${o.buildNotes?`<div class="ometa">Montagem: ${esc(o.buildNotes)}</div>`:''}
     ${o.block&&o.status==='bloqueado'?`<div class="cardmsg">Bloqueio: ${esc(o.block.reason)}</div>`:''}
