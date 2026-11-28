@@ -130,10 +130,10 @@ const mock = `
     await page.waitForFunction(() => window.__store['orders/o0001'].status === 'recebido');
     if (await page.locator('#dlg .sheet').count()) throw new Error('o recebimento não deve abrir janela');
     await page.locator('.tab', { hasText: 'Entregas' }).click();
-    await btn('Registrar retirada').click();
-    await page.waitForSelector('#askf');
-    await btn('Concluir retirada').click();
+    await btn('Retirada confirmada').click();
     await page.waitForFunction(() => window.__store['orders/o0001'].status === 'concluido');
+    if (await page.locator('#askf').count()) throw new Error('retirada confirmada não deve abrir janela');
+    if ((await store())['orders/o0001'].delivery.who !== 'Maria Teste') throw new Error('quem retirou deveria ser o nome do pedido: ' + (await store())['orders/o0001'].delivery.who);
     const s = await store(); const o = s['orders/o0001'];
     if (o.history.length < 8) throw new Error('histórico curto ' + o.history.length);
     const baixas = Object.values(s).filter(d => d.type === 'baixa_pedido');

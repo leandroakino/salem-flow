@@ -161,8 +161,11 @@ function stationScan(){
   for(const o of arr('orders')){
     const pr=o.printed||{};
     if(STATION==='cima'){
-      const at=(o.status==='liberado'&&!o.skipProd)?(o.times||{}).liberadoAt:0;
-      if(at&&!pr.lib&&t-at<=ST_WINDOW&&!stBusy.has(o.id+'lib')){ stBusy.add(o.id+'lib'); run(()=>stationJob(o,'lib')); }
+      if(!o.skipProd&&ST_PROD.includes(o.status)){
+        const li=(o.times||{}).liberadoAt||0;
+        const first=(!pr.lib&&o.status==='liberado')?li:0, alt=(pr.lib&&o.changedAt&&o.changedAt>pr.lib)?o.changedAt:0, at=first||alt;
+        if(at&&t-at<=ST_WINDOW&&!stBusy.has(o.id+'lib'+at)){ stBusy.add(o.id+'lib'+at); run(()=>stationJob(o,'lib')); }
+      }
     }else{
       const lib=(o.times||{}).liberadoAt||(o.times||{}).inicioAt||0;
       // ficha de baixo sai na liberação (e de novo se o pedido for alterado depois)

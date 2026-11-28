@@ -12,7 +12,7 @@ function primaryAction(o){
     case 'pronto_subir': return att?{a:'r-now',l:'Confirmar recebimento'}:null;
     case 'em_transporte': return att?{a:'r-now',l:'Confirmar recebimento'}:null;
     case 'divergencia': return prod?{a:'p-fix',l:'Corrigido, reenviar'}:null;
-    case 'recebido': if(isDrv()) return o.type==='entrega'?{a:'d-out',l:'Peguei para entregar'}:null; return att?(o.type==='entrega'?{a:'d-out',l:'Saiu para entrega'}:{a:'d-pick',l:'Registrar retirada'}):null;
+    case 'recebido': if(isDrv()) return o.type==='entrega'?{a:'d-out',l:'Peguei para entregar'}:null; return att?(o.type==='entrega'?{a:'d-out',l:'Saiu para entrega'}:{a:'d-pick',l:'Retirada confirmada'}):null;
     case 'saiu_entrega': return (att||(isDrv()&&mine(o)))?{a:'d-done',l:isDrv()?'Entreguei':'Confirmar entrega'}:null;
     case 'entrega_problema': return (att||(isDrv()&&mine(o)))?{a:'d-out',l:'Sair novamente'}:null;
   }
@@ -28,6 +28,7 @@ function secondary(o){
   if(prod&&['em_producao','finalizado'].includes(o.status)&&!o.confReq) a.push({a:'p-confreq',l:'Solicitar conferência'});
   if(att&&['pronto_subir','em_transporte'].includes(o.status)) a.push({a:'r-div',l:'Registrar divergência'});
   if((att||(isDrv()&&mine(o)))&&o.status==='saiu_entrega') a.push({a:'d-other',l:'Entregue a outra pessoa'},{a:'d-prob',l:'Problema na entrega'});
+  if(att&&o.status==='recebido'&&o.type!=='entrega') a.push({a:'d-pick-other',l:'Retirada por outra pessoa'});
   a.push({a:'o-ficha',l:'Ficha do pedido'});
   if(att&&open) a.push({a:'o-cancel',l:'Cancelar pedido'});
   return a;
@@ -57,7 +58,7 @@ function prodCard(o){
     ${o.block&&o.status==='bloqueado'?`<div class="cardmsg">Bloqueio: ${esc(o.block.reason)}</div>`:''}
     ${o.div&&o.status==='divergencia'?`<div class="cardmsg">Divergência: ${esc(o.div.label)}. ${esc(o.div.note)}</div>`:''}
     ${pa?`<button class="btn primary lg" data-act="${pa.a}" data-id="${o.id}">${pa.l}</button>`:''}
-    ${pa&&pa.a==='d-done'?`<button class="btn lg" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}
+    ${pa&&pa.a==='d-done'?`<button class="btn lg" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}${pa&&pa.a==='d-pick'?`<button class="btn lg" data-act="d-pick-other" data-id="${o.id}">Retirada por outra pessoa</button>`:''}
   </article>`;
 }
 function orderRow(o){
@@ -225,7 +226,7 @@ function drvCard(o,k){
     ${o.status==='entrega_problema'&&d.problem?`<div class="cardmsg">Problema: ${esc(d.problem)}</div>`:''}
     <div class="row" style="flex-wrap:wrap;gap:8px">
       ${pa?`<button class="btn primary lg" data-act="${pa.a}" data-id="${o.id}">${pa.l}</button>`:''}
-      ${pa&&pa.a==='d-done'?`<button class="btn" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}
+      ${pa&&pa.a==='d-done'?`<button class="btn" data-act="d-other" data-id="${o.id}">Entregue a outra pessoa</button>`:''}${pa&&pa.a==='d-pick'?`<button class="btn" data-act="d-pick-other" data-id="${o.id}">Retirada por outra pessoa</button>`:''}
       ${pr?`<button class="btn" data-act="d-prob" data-id="${o.id}">Problema</button>`:''}
       ${o.recipientPhone&&digits(o.recipientPhone)?`<a class="btn" data-act="noop" href="tel:${digits(o.recipientPhone)}">Ligar p/ destinatário</a>`:''}${tel?`<a class="btn" data-act="noop" href="tel:${tel}">${o.recipientPhone?'Ligar p/ comprador':'Ligar'}</a>`:''}
     </div></article>`;

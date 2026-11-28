@@ -326,7 +326,7 @@ H['o-open']=d=>openDrawer(d.id);
 H['o-new']=d=>{ const F=newF(); if(d.cid&&S.clients[d.cid]){ F.name=S.clients[d.cid].name; F.phone=S.clients[d.cid].phone; } openForm(F); };
 H['o-edit']=d=>openForm(orderToF(ordr(d)));
 H['o-dup']=d=>{ const F=orderToF(ordr(d)); openForm({...F,id:null,key:uid(),date:todayKey(),time:'',noTime:false,photos:[],urgent:false}); };
-H['o-release']=async d=>{ const o=ordr(d); const F=orderToF(o); if(validate(F).some(e=>e.block)){ toast('Faltam dados. Complete o pedido para liberar.',true); openForm(F); return; } if((await releaseOrder(o,{},[]))===false) return; const n=await waitOrder(o.id); if(n) openFicha(n,'Pedido liberado. Imprima a ficha e envie com o pedido.'); };
+H['o-release']=async d=>{ const o=ordr(d); const F=orderToF(o); if(validate(F).some(e=>e.block)){ toast('Faltam dados. Complete o pedido para liberar.',true); openForm(F); return; } if((await releaseOrder(o,{},[]))===false) return; const n=await waitOrder(o.id); if(n) fichaAfter(n,'Pedido liberado. Imprima a ficha e envie com o pedido.'); };
 function slipHTML(o){
   const ent=o.type==='entrega', dest=o.recipient||o.client.name;
   const items=(o.items||[]).map(i=>`<div class="s-i">${i.qty}x ${esc(i.name)}${i.desc?`<br><span>${esc(i.desc)}</span>`:''}${i.direct?'<br><span>(item da loja, nao montar)</span>':''}</div>`).join('');
@@ -352,6 +352,11 @@ function fichaBar(o){
   $('#fb-x').onclick=hide; $('#fb-v').onclick=()=>{ hide(); openFicha(o); };
   $('#fb-p').onclick=async()=>{ if(await downloadFicha(o)) hide(); };
   fbT=setTimeout(hide,30000);
+}
+function fichaAfter(o,note){
+  const auto=(typeof STATION!=='undefined'&&STATION==='cima'&&!o.skipProd);
+  if(auto){ toast(orderNum(o)+(/alterado/i.test(note||'')?' alterado. Ficha nova enviada para a impressora.':' liberado. Ficha enviada para a impressora.')); return; }
+  openFicha(o,note);
 }
 function openFicha(o,note){
   openLayer('dlg',`<div class="sheet small"><h2>Ficha ${orderNum(o)}</h2><p class="muted small">${note||'Ficha com todas as informações do pedido, sem valores. Papel de 80 mm.'}</p>${slipHTML(o)}<div class="row end" style="flex-wrap:wrap"><button class="btn" id="fch-c">Copiar texto</button>${window.SALEM_WEB?'<button class="btn primary" id="fch-p">Imprimir agora</button>':''}<button class="btn" id="fch-d">Baixar para imprimir</button><button class="btn" id="fch-x">Fechar</button></div><p class="muted small">Baixar para imprimir: abra o arquivo baixado e o navegador já abre a impressão em 80 mm. </p></div>`);
@@ -416,7 +421,9 @@ H['r-find']=()=>{ const n=Number(digits($('#rcv-num').value)); const o=arr('orde
 H['p-fix']=d=>{ const o=ordr(d); return oact(o,{status:'pronto_subir',divOpen:false,transport:null},'Correção concluída','Pedido reenviado ao atendimento'); };
 function guardCard(o){ if(o.card!=='sem'&&!o.cardDone) throw new Error(isDrv()?'O cartão deste pedido ainda não foi feito. Avise o atendimento.':'O cartão deste pedido ainda não foi feito. Use "Cartão pronto" no pedido.'); }
 function guardConclude(o){ if(o.divOpen) throw new Error('Conclusão bloqueada: há uma divergência em aberto'); }
-H['d-pick']=async d=>{ const o=ordr(d); guardConclude(o); guardCard(o); const v=await ask({title:`Retirada ${orderNum(o)}`,ok:'Concluir retirada',fields:[{id:'who',label:'Quem retirou',type:'text',required:true,value:o.recipient||o.client.name},{id:'obs',label:'Observações',type:'text'}]}); if(v) await oact(o,{status:'concluido',outcome:'retirada',times:{concluidoAt:now()},delivery:{who:v.who,by:me.name,at:now(),obs:v.obs}},'Retirada concluída','Retirado por '+v.who); };
+const pickDone=(o,who,obs)=>oact(o,{status:'concluido',outcome:'retirada',times:{concluidoAt:now()},delivery:{who,by:me.name,at:now(),obs:obs||''}},'Retirada concluída','Retirado por '+who);
+H['d-pick']=async d=>{ const o=ordr(d); guardConclude(o); guardCard(o); const who=o.recipient||o.client.name; await pickDone(o,who); toast(orderNum(o)+' retirado por '+who); };
+H['d-pick-other']=async d=>{ const o=ordr(d); guardConclude(o); guardCard(o); const v=await ask({title:`Retirada por outra pessoa ${orderNum(o)}`,ok:'Retirada confirmada',fields:[{id:'who',label:'Quem retirou',type:'text',required:true,value:''},{id:'obs',label:'Observações',type:'text'}]}); if(v){ await pickDone(o,v.who,v.obs); toast(orderNum(o)+' retirado por '+v.who); } };
 H['noop']=()=>{};
 H['photo-zoom']=(d)=>{ const old=document.getElementById('zoom'); if(old) old.remove(); const z=document.createElement('div'); z.id='zoom'; z.innerHTML='<img alt="Foto de referência"><span>Toque para fechar</span>'; z.firstChild.src=d.src; z.onclick=()=>z.remove(); document.body.appendChild(z); };
 const dupName=(n,id)=>arr('users').some(u=>u.id!==id&&u.name.trim().toLowerCase()===n.trim().toLowerCase());
@@ -436,7 +443,7 @@ H['f-del']=d=>{ FM.items.splice(Number(d.i),1); renderForm(); };
 H['f-photo-del']=d=>{ FM.photos.splice(Number(d.i),1); renderForm(); };
 const sigO=o=>JSON.stringify([o.items,o.date,o.time,o.buildNotes,o.address,o.recipient||'',o.recipientPhone||'',o.card,o.cardMsg,o.client,o.type,o.urgent,o.notes]);
 H['f-save']=async(d,el)=>{ if(el.disabled) return; const rel=d.release==='1'; el.disabled=true; try{ const before=FM.id&&S.orders[FM.id], wasDraft=!before||before.status==='rascunho', sigBefore=before?sigO(before):''; const body=fToOrder(FM); const ok=await saveOrder(FM,rel); if(ok===false) return; closeLayer('form'); toast(rel?'Pedido liberado':'Pedido salvo'); const id=typeof ok==='string'?ok:null; FM=null;
-  if(id&&((rel&&wasDraft)||(!wasDraft&&sigO(body)!==sigBefore))){ const o=await waitOrder(id); if(o) openFicha(o,wasDraft?'Pedido liberado. Imprima a ficha e envie com o pedido.':'Pedido alterado. Imprima a ficha nova e troque a antiga.'); } }finally{ el.disabled=false; } };
+  if(id&&((rel&&wasDraft)||(!wasDraft&&sigO(body)!==sigBefore))){ const o=await waitOrder(id); if(o) fichaAfter(o,wasDraft?'Pedido liberado. Imprima a ficha e envie com o pedido.':'Pedido alterado. Imprima a ficha nova e troque a antiga.'); } }finally{ el.disabled=false; } };
 H['mural-new']=async()=>{ const v=await ask({title:'Registrar ocorrência',ok:'Publicar no mural',fields:[{id:'t',label:'O que aconteceu?',type:'textarea',required:true}]}); if(v) await put('mural',uid(),{at:now(),by:me.name,role:me.role,text:v.t}); };
 H['s-new']=()=>stockForm(null);
 H['s-edit']=d=>stockForm(S.stock[d.id]);
