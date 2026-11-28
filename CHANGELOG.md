@@ -3,7 +3,7 @@
 Cada atualização publicada ganha um número e fica registrada aqui com o commit correspondente. A versão aparece na tela de login e no menu do usuário.
 Para voltar a uma versão: `git checkout <commit>` (ou peça ao Claude: "voltar para a v1.2").
 
-## v1.10
+## v1.10 (commit 7d0109c)
 - Retirada em 1 clique: "Retirada confirmada" conclui direto, registrando o nome de "Quem retira" (ou o cliente). Novo botão "Retirada por outra pessoa" pergunta o nome.
 - Ficha na liberação: com a estação de cima ligada, não abre mais o pop-up; mostra só um aviso curto de que a ficha foi enviada. Sem a estação (ou pedido que não passa pela produção), o pop-up abre como antes.
 - Estação de cima também reimprime a ficha quando o pedido é alterado.
